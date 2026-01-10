@@ -13,7 +13,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     cocApiToken: process.env.COC_API_TOKEN,
     public: {
-      // Any public config
+      // Optional: Use external proxy (Cloudflare Worker) in production
+      cocProxyUrl: process.env.NUXT_PUBLIC_COC_PROXY_URL || ''
     }
   },
   css: [

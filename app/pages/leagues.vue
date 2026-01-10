@@ -87,6 +87,9 @@ const fetchWarDetails = async (clanTag: string) => {
 
   state.loadingStats = true
   const playerStatsMap = new Map<string, PlayerStats>()
+  
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.cocProxyUrl || '/api/coc'
 
   try {
     // Fetch all war details from rounds
@@ -94,7 +97,7 @@ const fetchWarDetails = async (clanTag: string) => {
       for (const warTag of round.warTags) {
         try {
           const encodedWarTag = encodeURIComponent(warTag)
-          const warData = await $fetch<any>(`/api/coc/clanwarleagues/wars/${encodedWarTag}`)
+          const warData = await $fetch<any>(`${baseUrl}/clanwarleagues/wars/${encodedWarTag}`)
           
           // Find our clan in this war
           const ourClan = warData.clan?.tag === clanTag ? warData.clan : 
@@ -162,6 +165,9 @@ const toggleStats = async (clanTag: string) => {
 }
 
 const fetchData = async () => {
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.cocProxyUrl || '/api/coc'
+  
   for (const clan of trackedClans) {
     const encodedTag = encodeURIComponent(clan.tag)
     const state = clansData.value[clan.tag]
@@ -171,12 +177,12 @@ const fetchData = async () => {
     
     try {
       // Fetch Clan Info
-      const infoData = await $fetch<ClanData>(`/api/coc/clans/${encodedTag}`)
+      const infoData = await $fetch<ClanData>(`${baseUrl}/clans/${encodedTag}`)
       state.info = infoData
 
       // Fetch League Group
       try {
-        const groupData = await $fetch<LeagueGroupData>(`/api/coc/clans/${encodedTag}/currentwar/leaguegroup`)
+        const groupData = await $fetch<LeagueGroupData>(`${baseUrl}/clans/${encodedTag}/currentwar/leaguegroup`)
         state.leagueGroup = groupData
       } catch (err: any) {
         if (err.statusCode === 404) {
