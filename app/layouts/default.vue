@@ -56,7 +56,7 @@ const links = [
             :key="link.path" 
             :to="link.path"
             class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
-            active-class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium shadow-sm"
+            active-class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium"
             @click="isSidebarOpen = false"
           >
             <component :is="link.icon" class="w-5 h-5 group-hover:scale-110 transition-transform" />

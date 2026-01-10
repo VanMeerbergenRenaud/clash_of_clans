@@ -43,7 +43,7 @@ watchEffect(() => {
   <div class="min-h-screen flex items-center justify-center p-4 bg-[url('https://wallpaperaccess.com/full/379058.jpg')] bg-cover bg-center">
     <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"></div>
     
-    <div class="relative w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-2xl shadow-2xl">
+    <div class="relative w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-2xl">
       <div class="text-center mb-8">
         <h1 class="text-4xl font-bold text-white mb-2">Clash Manager</h1>
         <p class="text-slate-300">Connectez-vous pour gérer votre clan</p>
@@ -79,7 +79,7 @@ watchEffect(() => {
         <button 
           type="submit" 
           :disabled="loading"
-          class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+          class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold border border-indigo-400/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <span v-if="loading">Connexion...</span>
           <span v-else>Se connecter</span>

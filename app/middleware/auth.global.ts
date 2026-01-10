@@ -1,7 +1,4 @@
 export default defineNuxtRouteMiddleware((to, from) => {
-    const user = useSupabaseUser()
-
-    if (!user.value && to.path !== '/login') {
-        return navigateTo('/login')
-    }
+    // We no longer redirect to login. Everyone has access to the site.
+    // Specific actions will be restricted in components.
 })

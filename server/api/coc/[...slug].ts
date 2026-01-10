@@ -35,14 +35,20 @@ export default defineEventHandler(async (event) => {
         })
         return response
     } catch (error: any) {
-        console.error('CoC API Proxy Error:', error)
-        // Log the response body if available
-        if (error.data) {
-            console.error('Error Body:', JSON.stringify(error.data, null, 2))
+        const statusCode = error.response?.status || 500
+
+        // Silence verbose logging for 404s (common for leaguegroup)
+        if (statusCode === 404) {
+            console.log(`[CoC Proxy] Resource not found (404): ${fixedSlug}`)
+        } else {
+            console.error('CoC API Proxy Error:', error)
+            if (error.data) {
+                console.error('Error Body:', JSON.stringify(error.data, null, 2))
+            }
         }
 
         throw createError({
-            statusCode: error.response?.status || 500,
+            statusCode: statusCode,
             statusMessage: error.message || 'Failed to fetch from CoC API',
             data: error.data
         })

@@ -1,73 +1,92 @@
 <script setup lang="ts">
-import { Layers, Sword, Zap, Wind, PlayCircle, ExternalLink } from 'lucide-vue-next'
+import { Layers, Sword, Zap, Wind, PlayCircle, ExternalLink, Plus, X, Loader2, Trash2 } from 'lucide-vue-next'
 import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
+import UiInput from '~/components/ui/Input.vue'
 
 definePageMeta({
   layout: 'default'
 })
 
+const supabase = useSupabaseClient()
+const user = useSupabaseUser()
+const profile = ref<any>(null)
+const strategies = ref<any[]>([])
+const loading = ref(true)
+const isAdding = ref(false)
+const showAddModal = ref(false)
 const selectedType = ref('All')
+
+const newStrat = ref({
+  title: '',
+  description: '',
+  type: 'ground',
+  min_town_hall: 16,
+  army_link: '',
+  video_url: ''
+})
 
 const types = [
   { id: 'All', icon: Layers, label: 'Tout' },
-  { id: 'Ground', icon: Sword, label: 'Sol' },
-  { id: 'Air', icon: Wind, label: 'Aérien' },
-  { id: 'Hybrid', icon: Zap, label: 'Hybride' }
+  { id: 'ground', icon: Sword, label: 'Sol' },
+  { id: 'air', icon: Wind, label: 'Aérien' },
+  { id: 'hybrid', icon: Zap, label: 'Hybride' }
 ]
 
-// Mock Strategies
-const strategies = ref([
-  {
-    id: 1,
-    title: 'Queen Walk Hybrid',
-    description: 'La meilleure stratégie pour TH13+. Une P1 Queen Walk solide suivie des mineurs et cochons.',
-    type: 'Hybrid',
-    th: 13,
-    army: '5 Healers, 14 Miners, 11 Hogs...',
-    difficulty: 'Hard',
-    video: 'https://img.youtube.com/vi/abc12345/maxresdefault.jpg', // Placeholder
-    author: 'Chef Renaud'
-  },
-  {
-    id: 2,
-    title: 'Zap Lalo',
-    description: 'Détruisez les AA et la reine ennemie avec la foudre, puis envoyez les ballons !',
-    type: 'Air',
-    th: 15,
-    army: '3 Hounds, 24 Loons, 8 Minions...',
-    difficulty: 'Expert',
-    video: 'https://img.youtube.com/vi/xyz98765/maxresdefault.jpg', // Placeholder
-    author: 'DarkVador'
-  },
-  {
-    id: 3,
-    title: 'Yeti Smash',
-    description: 'Une compo sol très robuste pour assurer le 2 étoiles et viser le 3.',
-    type: 'Ground',
-    th: 16,
-    army: '9 Yetis, 8 Bowlers, 4 Healers...',
-    difficulty: 'Medium',
-    video: 'https://img.youtube.com/vi/123456/maxresdefault.jpg', // Placeholder
-    author: 'ObiWan'
+const fetchProfile = async () => {
+  if (!user.value?.id) return
+  const { data } = await supabase.from('profiles').select('*').eq('id', user.value.id).single()
+  profile.value = data
+}
+
+const fetchStrategies = async () => {
+  loading.value = true
+  const { data, error } = await supabase
+    .from('strategies')
+    .select('*')
+    .order('created_at', { ascending: false })
+  
+  if (!error) {
+    strategies.value = data || []
   }
-])
+  loading.value = false
+}
+
+const isAdmin = computed(() => profile.value?.user_type === 'admin')
+
+onMounted(async () => {
+  await fetchProfile()
+  await fetchStrategies()
+})
+
+const handleAddStrategy = async () => {
+  isAdding.value = true
+  const { error } = await (supabase.from('strategies') as any).insert([newStrat.value])
+  if (!error) {
+    await fetchStrategies()
+    showAddModal.value = false
+    newStrat.value = { title: '', description: '', type: 'ground', min_town_hall: 16, army_link: '', video_url: '' }
+  } else {
+    alert(error.message)
+  }
+  isAdding.value = false
+}
+
+const handleDeleteStrategy = async (id: string) => {
+  if (!confirm('Supprimer cette stratégie ?')) return
+  const { error } = await supabase.from('strategies').delete().eq('id', id)
+  if (!error) {
+    await fetchStrategies()
+  } else {
+    alert(error.message)
+  }
+}
 
 const filteredStrats = computed(() => {
   if (selectedType.value === 'All') return strategies.value
   return strategies.value.filter(s => s.type === selectedType.value)
 })
-
-const difficultyColor = (diff: string) => {
-  switch(diff) {
-    case 'Easy': return 'success'
-    case 'Medium': return 'warning'
-    case 'Hard': return 'danger'
-    case 'Expert': return 'danger'
-    default: return 'default'
-  }
-}
 </script>
 
 <template>
@@ -82,7 +101,7 @@ const difficultyColor = (diff: string) => {
         <p class="text-slate-500 dark:text-slate-400 mt-1">Apprenez et maîtrisez les meilleures compositions</p>
       </div>
 
-      <UiButton :icon="Plus">Proposer une Stratégie</UiButton>
+      <UiButton @click="showAddModal = true" :icon="Plus">Proposer une Stratégie</UiButton>
     </div>
 
     <!-- Filters -->
@@ -93,7 +112,7 @@ const difficultyColor = (diff: string) => {
         @click="selectedType = type.id"
         class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 border"
         :class="selectedType === type.id 
-          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20' 
+          ? 'bg-indigo-600 text-white border-indigo-600' 
           : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'"
       >
         <component :is="type.icon" class="w-4 h-4" />
@@ -101,20 +120,29 @@ const difficultyColor = (diff: string) => {
       </button>
     </div>
 
-    <!-- Grid -->
-    <div class="space-y-4">
+    <!-- Content -->
+    <div v-if="loading" class="flex justify-center py-12">
+      <Loader2 class="w-10 h-10 text-indigo-600 animate-spin" />
+    </div>
+
+    <div v-else-if="filteredStrats.length === 0" class="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+      <p class="text-slate-500">Aucune stratégie trouvée.</p>
+    </div>
+
+    <div v-else class="space-y-4">
       <div 
         v-for="strat in filteredStrats" 
         :key="strat.id"
-        class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row gap-6 group"
+        class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors flex flex-col md:flex-row gap-6 group"
       >
         <!-- Thumbnail -->
         <div class="w-full md:w-64 h-36 bg-slate-900 rounded-xl relative overflow-hidden flex-shrink-0 group-hover:ring-2 ring-indigo-500/50 transition-all">
           <div class="absolute inset-0 flex items-center justify-center text-slate-600">
              <PlayCircle class="w-12 h-12 text-white/80" />
           </div>
-          <!-- Placeholder IMG would go here -->
-          <div class="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-white text-xs font-bold">10:42</div>
+          <div v-if="strat.video_url" class="absolute inset-0">
+             <img :src="`https://img.youtube.com/vi/${strat.video_url.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`" class="w-full h-full object-cover opacity-60" />
+          </div>
         </div>
 
         <!-- Content -->
@@ -123,32 +151,79 @@ const difficultyColor = (diff: string) => {
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-xl font-bold text-slate-900 dark:text-white">{{ strat.title }}</h3>
-                <UiBadge variant="default" class="text-xs">TH{{ strat.th }}</UiBadge>
+                <UiBadge variant="default" class="text-xs">TH{{ strat.min_town_hall }}</UiBadge>
+                <UiBadge variant="info" class="text-xs capitalize">{{ strat.type }}</UiBadge>
               </div>
               <p class="text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ strat.description }}</p>
             </div>
-            <UiBadge :variant="difficultyColor(strat.difficulty)">{{ strat.difficulty }}</UiBadge>
-          </div>
-
-          <div class="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm text-slate-600 dark:text-slate-300 font-mono border border-slate-100 dark:border-slate-700/50">
-            {{ strat.army }}
+            <UiButton 
+              v-if="isAdmin" 
+              variant="danger" 
+              size="sm" 
+              :icon="Trash2"
+              @click="handleDeleteStrategy(strat.id)"
+            />
           </div>
 
           <div class="pt-2 flex items-center justify-between">
-            <div class="text-xs text-slate-400">Proposé par {{ strat.author }}</div>
+            <div class="text-xs text-slate-400">
+              Ajouté le {{ new Date(strat.created_at).toLocaleDateString() }}
+            </div>
             <div class="flex gap-3">
-              <button class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+              <a v-if="strat.army_link" :href="strat.army_link" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
                 <ExternalLink class="w-4 h-4" />
                 Lien Armée
-              </button>
-              <button class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+              </a>
+              <a v-if="strat.video_url" :href="strat.video_url" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
                 <PlayCircle class="w-4 h-4" />
                 Voir Tuto
-              </button>
+              </a>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Add Modal -->
+    <ClientOnly>
+      <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showAddModal = false"></div>
+        <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+          <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Proposer une stratégie</h2>
+            <button @click="showAddModal = false" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+              <X class="w-5 h-5 text-slate-500" />
+            </button>
+          </div>
+          <form @submit.prevent="handleAddStrategy" class="p-6 space-y-4">
+            <UiInput v-model="newStrat.title" label="Nom de la compo" placeholder="ex: Queen Walk Hybrid" required />
+            <div class="space-y-1">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+              <textarea v-model="newStrat.description" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5 min-h-[100px]" placeholder="Détails de l'attaque..."></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Type</label>
+                <select v-model="newStrat.type" class="w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5">
+                  <option value="ground">Sol</option>
+                  <option value="air">Aérien</option>
+                  <option value="hybrid">Hybride</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">TH Minimum</label>
+                <input v-model.number="newStrat.min_town_hall" type="number" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5" />
+              </div>
+            </div>
+            <UiInput v-model="newStrat.army_link" label="Lien de l'armée" placeholder="https://link.clashofclans.com/..." />
+            <UiInput v-model="newStrat.video_url" label="Lien Vidéo (YouTube)" placeholder="https://www.youtube.com/watch?v=..." />
+            <div class="flex gap-3 mt-6">
+              <UiButton type="button" variant="outline" block @click="showAddModal = false">Annuler</UiButton>
+              <UiButton type="submit" variant="primary" block :loading="isAdding">Proposer</UiButton>
+            </div>
+          </form>
+        </div>
+      </div>
+    </ClientOnly>
   </div>
 </template>

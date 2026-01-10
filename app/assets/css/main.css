@@ -14,7 +14,7 @@
 
 /* Premium Glass Effect */
 .glass {
-  @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  @apply bg-white/70 backdrop-blur-lg border border-white/20;
 }
 .dark .glass {
   @apply bg-slate-900/70 border-slate-700/30;

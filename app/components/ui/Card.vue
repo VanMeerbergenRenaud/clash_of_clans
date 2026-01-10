@@ -6,7 +6,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
     <div v-if="title || $slots.header" class="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
       <div v-if="title">
         <h3 class="font-bold text-lg text-slate-900 dark:text-white">{{ title }}</h3>
