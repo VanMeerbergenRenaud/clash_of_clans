@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Shield, Users, Trophy, AlertCircle } from 'lucide-vue-next'
+import { Shield, Users, Trophy, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
@@ -10,38 +10,200 @@ definePageMeta({
 
 const activeTab = ref('status')
 
-// Mock Data for UI dev
-const clanInfo = ref({
-  name: 'Les Gaulois',
-  tag: '#29UQ9J8Y',
-  role: 'Leader', // currentUser Role
-  league: 'Master League I',
-  cwlStatus: 'active', // 'active', 'signup', 'ended'
-  round: 3
-})
+const trackedClans = [
+  { name: 'Belgique', tag: '#L2Y8CUP' },
+  { name: 'Belgique 3', tag: '#2PVG8CQCC' }
+]
 
-const roster = ref([
-  { id: 1, name: 'Chef Renaud', tag: '#123', th: 16, active: true, stars: 21, destruction: 540 },
-  { id: 2, name: 'DarkVador', tag: '#456', th: 16, active: true, stars: 15, destruction: 480 },
-  { id: 3, name: 'ObiWan', tag: '#789', th: 15, active: false, stars: 0, destruction: 0 },
-  // ... more members
-])
-
-// Generate more mock members
-for (let i = 4; i <= 30; i++) {
-  roster.value.push({
-    id: i,
-    name: `Member ${i}`,
-    tag: `#TAG${i}`,
-    th: 13 + Math.floor(Math.random() * 4), // TH 13-16
-    active: i <= 15,
-    stars: Math.floor(Math.random() * 21),
-    destruction: Math.floor(Math.random() * 600)
-  })
+interface ClanData {
+  tag: string
+  name: string
+  warLeague?: {
+    name: string
+    id: number
+  }
+  members: number
+  clanLevel: number
 }
 
-// Stats
-const totalStars = computed(() => roster.value.reduce((acc, curr) => acc + curr.stars, 0))
+interface LeagueGroupData {
+  state: string
+  season: string
+  rounds: { warTags: string[] }[]
+  clans: any[]
+}
+
+interface PlayerStats {
+  tag: string
+  name: string
+  stars: number
+  destructionPercentage: number
+  attacks: number
+}
+
+interface ClanState {
+  info: ClanData | null
+  leagueGroup: LeagueGroupData | null
+  playerStats: PlayerStats[]
+  loading: boolean
+  loadingStats: boolean
+  error: string | null
+  showStats: boolean
+}
+
+const clansData = ref<Record<string, ClanState>>({})
+
+// Initialize data structure
+trackedClans.forEach(c => {
+  clansData.value[c.tag] = { 
+    info: null, 
+    leagueGroup: null, 
+    playerStats: [],
+    loading: true, 
+    loadingStats: false,
+    error: null,
+    showStats: false
+  }
+})
+
+const clanViewModels = computed(() => {
+  return trackedClans.map(clan => ({
+    ...clan,
+    state: clansData.value[clan.tag] || { 
+      info: null, 
+      leagueGroup: null, 
+      playerStats: [],
+      loading: false, 
+      loadingStats: false,
+      error: 'Initialization Error',
+      showStats: false
+    }
+  }))
+})
+
+const fetchWarDetails = async (clanTag: string) => {
+  const state = clansData.value[clanTag]
+  if (!state || !state.leagueGroup) return
+
+  state.loadingStats = true
+  const playerStatsMap = new Map<string, PlayerStats>()
+
+  try {
+    // Fetch all war details from rounds
+    for (const round of state.leagueGroup.rounds) {
+      for (const warTag of round.warTags) {
+        try {
+          const encodedWarTag = encodeURIComponent(warTag)
+          const warData = await $fetch<any>(`/api/coc/clanwarleagues/wars/${encodedWarTag}`)
+          
+          // Find our clan in this war
+          const ourClan = warData.clan?.tag === clanTag ? warData.clan : 
+                         warData.opponent?.tag === clanTag ? warData.opponent : null
+          
+          if (!ourClan || !ourClan.members) continue
+
+          // Aggregate stats for each player
+          for (const member of ourClan.members) {
+            const tag = member.tag
+            const existing = playerStatsMap.get(tag) || {
+              tag,
+              name: member.name,
+              stars: 0,
+              destructionPercentage: 0,
+              attacks: 0
+            }
+
+            if (member.attacks) {
+              for (const attack of member.attacks) {
+                existing.stars += attack.stars || 0
+                existing.destructionPercentage += attack.destructionPercentage || 0
+                existing.attacks += 1
+              }
+            }
+
+            playerStatsMap.set(tag, existing)
+          }
+        } catch (err) {
+          console.error(`Error fetching war ${warTag}:`, err)
+        }
+      }
+    }
+
+    // Calculate average destruction percentage
+    const playerStats = Array.from(playerStatsMap.values()).map(p => ({
+      ...p,
+      destructionPercentage: p.attacks > 0 ? p.destructionPercentage / p.attacks : 0
+    }))
+
+    // Sort by stars (desc), then by destruction percentage
+    playerStats.sort((a, b) => {
+      if (b.stars !== a.stars) return b.stars - a.stars
+      return b.destructionPercentage - a.destructionPercentage
+    })
+
+    state.playerStats = playerStats
+  } catch (err: any) {
+    console.error('Error fetching war details:', err)
+  } finally {
+    state.loadingStats = false
+  }
+}
+
+const toggleStats = async (clanTag: string) => {
+  const state = clansData.value[clanTag]
+  if (!state) return
+
+  state.showStats = !state.showStats
+  
+  // Fetch stats if we don't have them yet
+  if (state.showStats && state.playerStats.length === 0) {
+    await fetchWarDetails(clanTag)
+  }
+}
+
+const fetchData = async () => {
+  for (const clan of trackedClans) {
+    const encodedTag = encodeURIComponent(clan.tag)
+    const state = clansData.value[clan.tag]
+    if (!state) continue
+
+    state.loading = true
+    
+    try {
+      // Fetch Clan Info
+      const infoData = await $fetch<ClanData>(`/api/coc/clans/${encodedTag}`)
+      state.info = infoData
+
+      // Fetch League Group
+      try {
+        const groupData = await $fetch<LeagueGroupData>(`/api/coc/clans/${encodedTag}/currentwar/leaguegroup`)
+        state.leagueGroup = groupData
+      } catch (err: any) {
+        if (err.statusCode === 404) {
+           // Not in a league
+           state.leagueGroup = null
+        } else {
+           console.error(`Error fetching league group for ${clan.name}:`, err)
+        }
+      }
+
+    } catch (err: any) {
+      console.error(`Error fetching data for ${clan.name}:`, err)
+      state.error = err.statusMessage || err.message || "Impossible de récupérer les données"
+      // Add status code if available for clarity
+      if (err.statusCode) {
+         state.error += ` (${err.statusCode})`
+      }
+    } finally {
+      state.loading = false
+    }
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
+
 </script>
 
 <template>
@@ -53,134 +215,146 @@ const totalStars = computed(() => roster.value.reduce((acc, curr) => acc + curr.
           <Shield class="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
           Ligues de Guerre (CWL)
         </h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1">Gérez votre roster et suivez les performances</p>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">Suivi des clans Belgique & Belgique 3</p>
       </div>
       <div class="flex gap-2">
-        <UiButton variant="outline" :icon="Users">Gérer Roster</UiButton>
-        <UiButton :icon="Trophy">Voir Groupe</UiButton>
+        <UiButton variant="outline" :icon="Users" @click="fetchData">Actualiser</UiButton>
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="border-b border-slate-200 dark:border-slate-700">
-      <nav class="-mb-px flex space-x-8">
-        <button 
-          v-for="tab in ['status', 'roster', 'stats']" 
-          :key="tab"
-          @click="activeTab = tab"
-          class="capitalize py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
-          :class="activeTab === tab 
-            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
-            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:hover:text-slate-300'"
-        >
-          {{ tab }}
-        </button>
-      </nav>
-    </div>
+    <!-- Content -->
+    <div class="grid grid-cols-1 gap-6">
+      <div v-for="clan in clanViewModels" :key="clan.tag">
+        <UiCard :title="clan.name">
+          <template #header>
+             <span class="text-sm text-slate-500">{{ clan.tag }}</span>
+          </template>
 
-    <!-- Content: Status Tab -->
-    <div v-if="activeTab === 'status'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <UiCard title="État Actuel" class="lg:col-span-2">
-        <div class="flex items-center gap-6 mb-8">
-          <div class="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-4xl">
-            🛡️
+          <div v-if="clan.state.loading" class="flex justify-center py-8">
+            <Loader2 class="w-8 h-8 text-indigo-600 animate-spin" />
           </div>
-          <div>
-            <h3 class="text-2xl font-bold text-slate-900 dark:text-white">{{ clanInfo.league }}</h3>
-            <div class="flex items-center gap-2 mt-2">
-              <UiBadge variant="success">En cours</UiBadge>
-              <span class="text-slate-500">Round {{ clanInfo.round }} / 7</span>
+
+          <div v-else-if="clan.state.error" class="text-red-500 py-4">
+            {{ clan.state.error }}
+          </div>
+
+          <div v-else class="space-y-6">
+            <!-- Basic Info -->
+            <div class="flex items-center gap-6">
+              <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-2xl">
+                🛡️
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white">
+                  {{ clan.state.info?.warLeague?.name || 'Pas de ligue' }}
+                </h3>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-slate-500">Niveau {{ clan.state.info?.clanLevel }}</span>
+                  <span>•</span>
+                  <span class="text-slate-500">{{ clan.state.info?.members }} membres</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-center">
-            <div class="text-2xl font-bold text-indigo-600">{{ totalStars }}</div>
-            <div class="text-sm text-slate-500">Étoiles Totales</div>
-          </div>
-          <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-center">
-            <div class="text-2xl font-bold text-green-600">#2</div>
-            <div class="text-sm text-slate-500">Position</div>
-          </div>
-           <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-center">
-            <div class="text-2xl font-bold text-amber-600">15</div>
-            <div class="text-sm text-slate-500">Attaques rest.</div>
-          </div>
-        </div>
-      </UiCard>
 
-      <UiCard title="Prochain Match">
-        <template #header>
-           <UiBadge variant="warning">Dans 4h</UiBadge>
-        </template>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <span class="font-medium dark:text-white">Adversaire</span>
-            <span class="text-slate-500">Dark Slayers</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="font-medium dark:text-white">HDV Moy.</span>
-            <span class="text-slate-500">15.4</span>
-          </div>
-           <div class="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-700 dark:text-indigo-300 text-sm flex gap-2">
-            <AlertCircle class="w-5 h-5 flex-shrink-0" />
-            <p>Pensez à remplir les châteaux de clan avant 20:00 !</p>
-          </div>
-        </div>
-        <template #footer>
-          <UiButton block variant="primary">Préparer Stratégie</UiButton>
-        </template>
-      </UiCard>
-    </div>
-
-    <!-- Content: Roster Tab -->
-    <UiCard v-if="activeTab === 'roster'" title="Gestion du Roster (15 vs 15)">
-      <template #header>
-        <div class="text-sm text-slate-500">
-          <span class="font-bold text-slate-900 dark:text-white">{{ roster.filter(m => m.active).length }}</span> / 15 Sélectionnés
-        </div>
-      </template>
-      
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-slate-100 dark:border-slate-700 text-slate-500 text-sm">
-              <th class="py-3 px-4 font-medium">Joueur</th>
-              <th class="py-3 px-4 font-medium">HDV</th>
-              <th class="py-3 px-4 font-medium">Statut</th>
-              <th class="py-3 px-4 font-medium text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-            <tr v-for="member in roster" :key="member.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-              <td class="py-3 px-4">
-                <div class="font-medium text-slate-900 dark:text-white">{{ member.name }}</div>
-                <div class="text-xs text-slate-400">{{ member.tag }}</div>
-              </td>
-              <td class="py-3 px-4">
-                <span class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded text-xs font-bold">
-                  TH {{ member.th }}
-                </span>
-              </td>
-              <td class="py-3 px-4">
-                 <UiBadge :variant="member.active ? 'success' : 'default'">
-                    {{ member.active ? 'Titulaire' : 'Réserve' }}
-                 </UiBadge>
-              </td>
-              <td class="py-3 px-4 text-right">
+            <!-- League Group Status -->
+            <div v-if="clan.state.leagueGroup" class="space-y-4">
+              <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl">
+                <h4 class="font-semibold text-indigo-900 dark:text-indigo-200 mb-2">
+                  Saison {{ clan.state.leagueGroup?.season }} - {{ clan.state.leagueGroup?.state }}
+                </h4>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                  Clans dans le groupe :
+                </p>
+                <div class="flex flex-wrap gap-2 mb-4">
+                  <span v-for="c in clan.state.leagueGroup?.clans" :key="c.tag"
+                    class="px-2 py-1 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
+                    {{ c.name }}
+                  </span>
+                </div>
+                
+                <!-- Toggle Stats Button -->
                 <button 
-                  @click="member.active = !member.active"
-                  class="text-sm font-medium hover:underline focus:outline-none"
-                  :class="member.active ? 'text-red-600' : 'text-indigo-600'"
+                  @click="toggleStats(clan.tag)"
+                  class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
                 >
-                  {{ member.active ? 'Retirer' : 'Ajouter' }}
+                  <component :is="clan.state.showStats ? ChevronUp : ChevronDown" class="w-4 h-4" />
+                  {{ clan.state.showStats ? 'Masquer' : 'Voir' }} les statistiques des joueurs
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+
+              <!-- Player Stats Table -->
+              <div v-if="clan.state.showStats" class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div v-if="clan.state.loadingStats" class="flex justify-center py-8">
+                  <Loader2 class="w-6 h-6 text-indigo-600 animate-spin" />
+                </div>
+                
+                <div v-else-if="clan.state.playerStats.length === 0" class="p-8 text-center text-slate-500">
+                  Aucune statistique disponible
+                </div>
+
+                <div v-else class="overflow-x-auto">
+                  <table class="w-full">
+                    <thead class="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                          #
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                          Joueur
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                          ⭐ Étoiles
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                          💥 Destruction Moy.
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                          ⚔️ Attaques
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                      <tr 
+                        v-for="(player, index) in clan.state.playerStats" 
+                        :key="player.tag"
+                        class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <td class="px-4 py-3 text-sm font-medium text-slate-500">
+                          {{ index + 1 }}
+                        </td>
+                        <td class="px-4 py-3">
+                          <div class="font-medium text-slate-900 dark:text-white">{{ player.name }}</div>
+                          <div class="text-xs text-slate-400">{{ player.tag }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                          <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                            {{ player.stars }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                          <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm font-bold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                            {{ player.destructionPercentage.toFixed(1) }}%
+                          </span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                          <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            {{ player.attacks }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div v-else class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-center text-slate-500">
+              Aucune information de Ligue de Guerre disponible actuellement (Hors saison ou pas inscrit).
+            </div>
+            
+          </div>
+        </UiCard>
       </div>
-    </UiCard>
+    </div>
   </div>
 </template>
+
