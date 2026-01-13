@@ -4,6 +4,7 @@ import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
 import UiInput from '~/components/ui/Input.vue'
+import UiAlert from '~/components/ui/Alert.vue'
 
 definePageMeta({
   layout: 'default'
@@ -14,6 +15,7 @@ const user = useSupabaseUser()
 const profile = ref<any>(null)
 const strategies = ref<any[]>([])
 const loading = ref(true)
+const error = ref<string | null>(null)
 const isAdding = ref(false)
 const showAddModal = ref(false)
 const selectedType = ref('All')
@@ -42,15 +44,21 @@ const fetchProfile = async () => {
 
 const fetchStrategies = async () => {
   loading.value = true
-  const { data, error } = await supabase
-    .from('strategies')
-    .select('*')
-    .order('created_at', { ascending: false })
-  
-  if (!error) {
+  error.value = null
+  try {
+    const { data, error: err } = await supabase
+      .from('strategies')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (err) throw err
     strategies.value = data || []
+  } catch (err: any) {
+    console.error('Error fetching strategies:', err)
+    error.value = err.message
+  } finally {
+     loading.value = false
   }
-  loading.value = false
 }
 
 const isAdmin = computed(() => profile.value?.user_type === 'admin')
@@ -123,6 +131,12 @@ const filteredStrats = computed(() => {
     <!-- Content -->
     <div v-if="loading" class="flex justify-center py-12">
       <Loader2 class="w-10 h-10 text-indigo-600 animate-spin" />
+    </div>
+
+    <div v-else-if="error">
+       <UiAlert variant="destructive" title="Erreur">
+         {{ error }}
+       </UiAlert>
     </div>
 
     <div v-else-if="filteredStrats.length === 0" class="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">

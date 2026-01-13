@@ -4,6 +4,7 @@ import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
 import UiInput from '~/components/ui/Input.vue'
+import UiAlert from '~/components/ui/Alert.vue'
 
 definePageMeta({
   layout: 'default'
@@ -246,18 +247,7 @@ const handleDeleteClan = async (tag: string) => {
   }
 }
 
-const seedDefaultClans = async () => {
-  isAddingClan.value = true
-  const defaults = [
-    { name: 'Belgique', tag: '#L2Y8CUP' },
-    { name: 'Belgique 3', tag: '#2PVG8CQCC' }
-  ]
-  for (const clan of defaults) {
-    await (supabase.from('tracked_clans') as any).insert([clan])
-  }
-  await fetchTrackedClans()
-  isAddingClan.value = false
-}
+
 
 onMounted(async () => {
   await fetchProfile()
@@ -296,7 +286,6 @@ onMounted(async () => {
         <p class="text-slate-500">Ajoutez votre premier clan pour commencer à suivre ses performances en ligue.</p>
         <div class="pt-4 flex flex-col items-center gap-3">
           <UiButton v-if="isAdmin" variant="primary" :icon="Plus" @click="showAddClanModal = true">Ajouter un clan</UiButton>
-          <UiButton v-if="isAdmin" variant="ghost" size="sm" @click="seedDefaultClans">Importer clans par défaut (Belgique)</UiButton>
           <p v-else class="text-sm text-slate-400 italic">Demandez à un administrateur d'ajouter un clan.</p>
         </div>
       </div>
@@ -325,8 +314,10 @@ onMounted(async () => {
             <Loader2 class="w-8 h-8 text-indigo-600 animate-spin" />
           </div>
 
-          <div v-else-if="clan.state.error" class="text-red-500 py-4">
-            {{ clan.state.error }}
+          <div v-else-if="clan.state.error" class="py-4">
+            <UiAlert variant="destructive" title="Erreur">
+              {{ clan.state.error }}
+            </UiAlert>
           </div>
 
           <div v-else class="space-y-6">

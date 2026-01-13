@@ -4,6 +4,7 @@ import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
 import UiInput from '~/components/ui/Input.vue'
+import UiAlert from '~/components/ui/Alert.vue'
 
 definePageMeta({
   layout: 'default'
@@ -18,32 +19,14 @@ const errorMessage = ref('')
 const isMounted = ref(false)
 
 const fetchProfile = async () => {
-  if (!user.value?.id) {
-    console.log('No user ID found, skipping profile fetch')
-    return
-  }
-  
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.value.id)
-      .single()
-    
-    if (error) {
-      console.warn('Profile fetch error:', error.message)
-    } else {
-      profile.value = data
-    }
-  } catch (err) {
-    console.error('Unexpected profile error:', err)
-  }
+  if (!user.value?.id) return
+  const { data } = await supabase.from('profiles').select('*').eq('id', user.value.id).single()
+  profile.value = data
 }
 
 const fetchBases = async () => {
   loadingBases.value = true
   errorMessage.value = ''
-  console.log('--- Fetching Bases from Supabase ---')
   
   try {
     const { data, error } = await supabase
@@ -51,15 +34,10 @@ const fetchBases = async () => {
       .select('*')
       .order('created_at', { ascending: false })
     
-    if (error) {
-      console.error('Supabase query error:', error)
-      errorMessage.value = error.message
-    } else {
-      console.log('Successfully fetched bases:', data)
-      bases.value = data || []
-    }
+    if (error) throw error
+    bases.value = data || []
   } catch (err: any) {
-    console.error('System error fetching bases:', err)
+    console.error('Error fetching bases:', err)
     errorMessage.value = err.message
   } finally {
     loadingBases.value = false
@@ -77,20 +55,19 @@ onMounted(async () => {
 const selectedTH = ref('All')
 const selectedType = ref('All')
 
-const thLevels = ['All', 18, 17, 16]
+const thLevels = ['All', 17, 16]
 const types = ['All', 'War', 'Farming', 'Trophy', 'Fun']
 
 const showAddModal = ref(false)
 const newBase = ref({
   title: '',
-  th: 18,
+  th: 17,
   type: 'War',
   link: ''
 })
 
 const thImages: Record<number | string, string> = {
-  18: 'https://preview.redd.it/th18-concept-art-v0-v9b9b9b9b9b91.jpg?width=1080&crop=smart&auto=webp&s=6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f',
-  17: 'https://preview.redd.it/th17-concept-art-v0-v9b9b9b9b9b91.jpg?width=1080&crop=smart&auto=webp&s=5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e',
+  17: 'https://clashofclans-layouts.com/images/layouts/16/16_13.jpg', // Placeholder since verified TH17 image is not available
   16: 'https://clashofclans-layouts.com/images/layouts/16/16_13.jpg'
 }
 
@@ -215,11 +192,11 @@ const handleDeleteBase = async (id: number) => {
         </div>
 
         <!-- Error Message -->
-        <div v-if="errorMessage" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-red-600 dark:text-red-400 text-sm">
-          <p class="font-bold">Erreur de connexion :</p>
+        <!-- Error Message -->
+        <UiAlert v-if="errorMessage" title="Erreur de connexion" variant="destructive">
           <p>{{ errorMessage }}</p>
-          <UiButton size="sm" variant="outline" class="mt-3" @click="fetchBases">Réessayer</UiButton>
-        </div>
+          <UiButton size="sm" variant="outline" class="mt-3 border-red-200 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/20" @click="fetchBases">Réessayer</UiButton>
+        </UiAlert>
 
         <!-- Grid -->
         <div v-if="loadingBases" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -241,7 +218,7 @@ const handleDeleteBase = async (id: number) => {
           <div 
             v-for="base in filteredBases" 
             :key="base.id"
-            class="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-indigo-400 dark:hover:border-indigo-500 transition-all duration-300 shadow-sm"
+            class="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300"
           >
             <!-- Image Area -->
             <div class="aspect-[16/9] bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
@@ -291,7 +268,7 @@ const handleDeleteBase = async (id: number) => {
       <div v-if="showAddModal && isMounted" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showAddModal = false"></div>
         
-        <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
           <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <h2 class="text-xl font-bold text-slate-900 dark:text-white">Nouvelle base</h2>
             <button @click="showAddModal = false" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
@@ -306,7 +283,7 @@ const handleDeleteBase = async (id: number) => {
               <div class="space-y-1">
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Town Hall</label>
                 <select v-model="newBase.th" class="w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5">
-                  <option v-for="th in [18, 17, 16]" :key="th" :value="th">TH{{ th }}</option>
+                  <option v-for="th in [17, 16]" :key="th" :value="th">TH{{ th }}</option>
                 </select>
               </div>
               <div class="space-y-1">

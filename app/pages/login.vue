@@ -6,6 +6,7 @@ definePageMeta({
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const router = useRouter()
+import UiAlert from '~/components/ui/Alert.vue'
 
 const loading = ref(false)
 const email = ref('')
@@ -72,9 +73,9 @@ watchEffect(() => {
           />
         </div>
 
-        <div v-if="errorMsg" class="p-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-200 text-sm">
+        <UiAlert v-if="errorMsg" variant="destructive" title="Erreur de connexion">
           {{ errorMsg }}
-        </div>
+        </UiAlert>
 
         <button 
           type="submit" 

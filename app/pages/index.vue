@@ -3,6 +3,7 @@ import { Shield, Swords, Map, Layers, TrendingUp, Users, ArrowRight, ChevronRigh
 import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
+import UiAlert from '~/components/ui/Alert.vue'
 
 definePageMeta({
   layout: 'default'
@@ -35,11 +36,7 @@ const fetchClansData = async () => {
   }
 }
 
-const recentActivity = [
-  { id: 1, user: 'Chef Renaud', action: 'a partagé une base TH16', time: 'Il y a 2h', icon: Map },
-  { id: 2, user: 'DarkVador', action: 'a ajouté une stratégie', time: 'Il y a 5h', icon: Layers },
-  { id: 3, user: 'ObiWan', action: 'a rejoint le clan', time: 'Il y a 1j', icon: Users },
-]
+
 
 onMounted(() => {
   fetchClansData()
@@ -52,19 +49,19 @@ onMounted(() => {
     <div class="relative bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-8 text-white overflow-hidden border border-indigo-500/50">
       <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-2xl"></div>
       <div class="relative z-10">
-        <h1 class="text-3xl font-bold mb-2">Bonjour, Chef ! 👋</h1>
+        <h1 class="text-3xl font-bold mb-2">Tableau de Bord</h1>
         <p class="text-indigo-100 max-w-xl">
-          La Ligue de Clan approche. Vérifiez que tous les membres ont leurs héros disponibles et que les châteaux de clan sont remplis.
+          Suivez vos clans, gérez les guerres et préparez vos stratégies.
         </p>
         <div class="flex gap-3 mt-6">
           <NuxtLink to="/wars">
             <button class="bg-white text-indigo-600 px-6 py-2.5 rounded-xl font-bold border border-slate-200 hover:bg-indigo-50 transition-colors">
-              Gérer la Guerre
+              Guerre en cours
             </button>
           </NuxtLink>
           <NuxtLink to="/leagues">
              <button class="bg-indigo-700/50 text-white border border-indigo-400/30 px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-colors">
-              Voir Roster CWL
+              Ligues (CWL)
             </button>
           </NuxtLink>
         </div>
@@ -99,9 +96,14 @@ onMounted(() => {
           <UiBadge variant="default" class="ml-auto text-xs">{{ clan.tag }}</UiBadge>
         </div>
         
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          <!-- Victoires -->
-          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center group hover:scale-[1.02] transition-transform">
+        <div v-if="clan.info.error">
+          <UiAlert variant="destructive" title="Erreur de chargement">
+            Impossible de récupérer les informations pour {{ clan.name }}. Vérifiez le tag du clan ou l'API.
+          </UiAlert>
+        </div>
+        
+        <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center">
             <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-green-100 dark:bg-green-900/20 text-green-600">
               <TrendingUp class="w-6 h-6" />
             </div>
@@ -109,8 +111,7 @@ onMounted(() => {
             <div class="text-sm text-slate-500">Victoires</div>
           </div>
 
-          <!-- Membres -->
-          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center group hover:scale-[1.02] transition-transform">
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center">
             <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-blue-100 dark:bg-blue-900/20 text-blue-600">
               <Users class="w-6 h-6" />
             </div>
@@ -118,8 +119,7 @@ onMounted(() => {
             <div class="text-sm text-slate-500">Membres</div>
           </div>
 
-          <!-- Niveau -->
-          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center group hover:scale-[1.02] transition-transform">
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center">
             <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600">
               <Shield class="w-6 h-6" />
             </div>
@@ -127,8 +127,7 @@ onMounted(() => {
             <div class="text-sm text-slate-500">Niveau</div>
           </div>
 
-          <!-- Win Streak -->
-          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center group hover:scale-[1.02] transition-transform">
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center">
             <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-amber-100 dark:bg-amber-900/20 text-amber-600">
               <Swords class="w-6 h-6" />
             </div>
@@ -137,59 +136,35 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Recent Activity -->
-      <UiCard title="Activité Récente" class="lg:col-span-2">
-        <div class="space-y-4">
-          <div 
-            v-for="item in recentActivity" 
-            :key="item.id" 
-            class="flex items-start gap-4 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors"
-          >
-            <div class="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-              <component :is="item.icon" class="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            </div>
-            <div class="flex-1">
-              <p class="text-sm text-slate-900 dark:text-white">
-                <span class="font-bold">{{ item.user }}</span> {{ item.action }}
-              </p>
-              <p class="text-xs text-slate-400 mt-0.5">{{ item.time }}</p>
-            </div>
-          </div>
-        </div>
-        <template #footer>
-          <button class="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline w-full text-center">
-            Voir tout l'historique
-          </button>
-        </template>
-      </UiCard>
-
+    
       <!-- Quick Actions -->
-      <UiCard title="Accès Rapide">
-        <div class="space-y-3">
-          <NuxtLink to="/bases" class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group">
-            <div class="flex items-center gap-3">
-              <div class="bg-white dark:bg-slate-700 p-2 rounded-lg border border-slate-100 dark:border-slate-600">
-                <Map class="w-5 h-5 text-emerald-500" />
+       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <NuxtLink to="/bases" class="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-indigo-500 transition-colors group">
+            <div class="flex items-center gap-4">
+              <div class="bg-emerald-100 dark:bg-emerald-900/20 p-3 rounded-xl">
+                <Map class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span class="font-medium text-slate-700 dark:text-slate-300">Trouver une Base</span>
+              <div>
+                 <h3 class="font-bold text-slate-900 dark:text-white">Trouver une Base</h3>
+                 <p class="text-sm text-slate-500">Accéder à la bibliothèque de bases</p>
+              </div>
             </div>
-            <ChevronRight class="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />
+            <ChevronRight class="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
           </NuxtLink>
 
-           <NuxtLink to="/strategies" class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group">
-            <div class="flex items-center gap-3">
-              <div class="bg-white dark:bg-slate-700 p-2 rounded-lg border border-slate-100 dark:border-slate-600">
-                <Layers class="w-5 h-5 text-purple-500" />
+           <NuxtLink to="/strategies" class="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-indigo-500 transition-colors group">
+            <div class="flex items-center gap-4">
+              <div class="bg-purple-100 dark:bg-purple-900/20 p-3 rounded-xl">
+                <Layers class="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <span class="font-medium text-slate-700 dark:text-slate-300">Voir Stratégies</span>
+              <div>
+                 <h3 class="font-bold text-slate-900 dark:text-white">Voir Stratégies</h3>
+                 <p class="text-sm text-slate-500">Apprendre de nouvelles attaques</p>
+              </div>
             </div>
-            <ChevronRight class="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />
+            <ChevronRight class="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
           </NuxtLink>
         </div>
-      </UiCard>
     </div>
   </div>
 </template>

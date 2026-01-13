@@ -3,6 +3,7 @@ import { Swords, Clock, CheckCircle2, Loader2 } from 'lucide-vue-next'
 import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
+import UiAlert from '~/components/ui/Alert.vue'
 
 definePageMeta({
   layout: 'default'
@@ -15,6 +16,7 @@ const loading = ref(true)
 const warData = ref<any>(null)
 const cwlData = ref<any>(null)
 const pastWars = ref<any[]>([])
+const error = ref<string | null>(null)
 
 const fetchTrackedClans = async () => {
   const { data } = await (supabase.from('tracked_clans') as any).select('*')
@@ -32,6 +34,7 @@ const fetchWarData = async () => {
     return
   }
   loading.value = true
+  error.value = null
   try {
     const encodedTag = encodeURIComponent(selectedClanTag.value)
     
@@ -56,8 +59,9 @@ const fetchWarData = async () => {
     
     pastWars.value = dbWars || []
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching war data:', err)
+    error.value = "Impossible de récupérer les données de guerre. L'API est peut-être indisponible."
     warData.value = null
   } finally {
     loading.value = false
@@ -144,6 +148,13 @@ onMounted(async () => {
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center py-20">
       <Loader2 class="w-12 h-12 text-indigo-600 animate-spin" />
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error">
+       <UiAlert variant="destructive" title="Erreur">
+         {{ error }}
+       </UiAlert>
     </div>
 
     <!-- No War State -->
@@ -247,29 +258,7 @@ onMounted(async () => {
            </div>
         </UiCard>
 
-        <UiCard title="Performance Stats">
-          <div class="space-y-4">
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span class="text-slate-500">Taux de Perf (3 étoiles)</span>
-                <span class="font-bold text-indigo-600">35%</span>
-              </div>
-              <div class="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full bg-indigo-500" style="width: 35%"></div>
-              </div>
-            </div>
-            
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span class="text-slate-500">Moyenne étoiles</span>
-                <span class="font-bold text-indigo-600">2.4</span>
-              </div>
-              <div class="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500" style="width: 80%"></div>
-              </div>
-            </div>
-          </div>
-        </UiCard>
+
       </div> <!-- end Sidebar (218) -->
     </div> <!-- end Grid (181) -->
   </div> <!-- end Current War Section (147) -->
