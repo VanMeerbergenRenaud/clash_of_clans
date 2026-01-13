@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Swords, Clock, CheckCircle2, Loader2 } from 'lucide-vue-next'
+import { Swords, Clock, CheckCircle2, Loader2, Shield } from 'lucide-vue-next'
 import UiCard from '~/components/ui/Card.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
@@ -39,16 +39,30 @@ const fetchWarData = async () => {
     const encodedTag = encodeURIComponent(selectedClanTag.value)
     
     // 1. Fetch Current War (Standard or CWL War)
-    const data = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar`)
-    warData.value = data.state !== 'notInWar' ? data : null
+    let currentWarTask: Promise<any> | null = $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar`)
+      .catch(e => {
+        // If 403, it means War Log is private
+        if (e.statusCode === 403 || e.response?.status === 403) {
+          throw new Error('PRIVATE_LOG')
+        }
+        // If other error, just return null (maybe network, or 404)
+        return null
+      })
 
     // 2. Fetch CWL Group Info
-    try {
-      const cwl = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar/leaguegroup`)
-      cwlData.value = cwl
-    } catch (e) {
-      cwlData.value = null
+    let cwlGroupTask: Promise<any> | null = $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar/leaguegroup`)
+      .catch(() => null)
+    
+    const [currentWarRes, cwlGroupRes] = await Promise.all([currentWarTask.catch(e => e), cwlGroupTask])
+
+    if (currentWarRes instanceof Error && currentWarRes.message === 'PRIVATE_LOG') {
+      error.value = "Le journal de guerre de ce clan est privé. Impossible d'afficher les détails de la guerre en cours."
+      warData.value = null
+    } else {
+      warData.value = currentWarRes && currentWarRes.state !== 'notInWar' ? currentWarRes : null
     }
+
+    cwlData.value = cwlGroupRes
 
     // 3. Fetch Past Wars from DB
     const { data: dbWars } = await supabase
@@ -61,7 +75,9 @@ const fetchWarData = async () => {
 
   } catch (err: any) {
     console.error('Error fetching war data:', err)
-    error.value = "Impossible de récupérer les données de guerre. L'API est peut-être indisponible."
+    if (!error.value) {
+       error.value = "Impossible de récupérer les données de guerre. L'API est peut-être indisponible."
+    }
     warData.value = null
   } finally {
     loading.value = false

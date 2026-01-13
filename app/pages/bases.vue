@@ -5,6 +5,9 @@ import UiButton from '~/components/ui/Button.vue'
 import UiBadge from '~/components/ui/Badge.vue'
 import UiInput from '~/components/ui/Input.vue'
 import UiAlert from '~/components/ui/Alert.vue'
+import th18Img from '~/assets/img/th/th18.jpeg'
+import th17Img from '~/assets/img/th/th17.jpeg'
+import th16Img from '~/assets/img/th/th16.jpeg'
 
 definePageMeta({
   layout: 'default'
@@ -55,20 +58,23 @@ onMounted(async () => {
 const selectedTH = ref('All')
 const selectedType = ref('All')
 
-const thLevels = ['All', 17, 16]
+const thLevels = ['All', 18, 17, 16]
 const types = ['All', 'War', 'Farming', 'Trophy', 'Fun']
 
 const showAddModal = ref(false)
 const newBase = ref({
   title: '',
-  th: 17,
+  th: 18,
   type: 'War',
   link: ''
 })
 
+
+
 const thImages: Record<number | string, string> = {
-  17: 'https://clashofclans-layouts.com/images/layouts/16/16_13.jpg', // Placeholder since verified TH17 image is not available
-  16: 'https://clashofclans-layouts.com/images/layouts/16/16_13.jpg'
+  18: th18Img,
+  17: th17Img,
+  16: th16Img
 }
 
 const isAdding = ref(false)
@@ -218,45 +224,60 @@ const handleDeleteBase = async (id: number) => {
           <div 
             v-for="base in filteredBases" 
             :key="base.id"
-            class="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300"
+            class="group flex flex-col bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300"
           >
-            <!-- Image Area -->
-            <div class="aspect-[16/9] bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
-              <img :src="thImages[base.th] || thImages[16]" alt="Preview" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div class="absolute top-3 left-3 flex gap-2">
-                <span class="bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">TH {{ base.th }}</span>
-                <span class="bg-indigo-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded capitalize">{{ base.type }}</span>
-              </div>
-              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                 <UiButton size="sm" variant="secondary" :icon="Copy" @click="copyToClipboard(base.link)">Lien</UiButton>
-                 <a :href="base.link" target="_blank">
-                   <UiButton size="sm" variant="primary" :icon="ExternalLink">Ouvrir</UiButton>
-                 </a>
-                 <UiButton 
-                   v-if="isAdmin" 
-                   size="sm" 
-                   variant="danger" 
-                   :icon="X" 
-                   :loading="isDeleting === base.id"
-                   @click="handleDeleteBase(base.id)"
-                 >
-                   Supprimer
-                 </UiButton>
+            <!-- Image Area - Bigger -->
+            <div class="aspect-[4/3] bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
+              <img :src="thImages[base.th] || thImages[16]" alt="Preview" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              
+              <!-- Badges -->
+              <div class="absolute top-4 left-4 flex flex-wrap gap-2">
+                <span class="bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/10 shadow-lg">TH {{ base.th }}</span>
+                <span class="bg-emerald-600/90 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/10 shadow-lg capitalize">{{ base.type }}</span>
               </div>
             </div>
 
-            <!-- Info Area -->
-            <div class="p-5">
-              <div class="flex justify-between items-start mb-2">
-                <div>
-                  <h3 class="font-bold text-slate-900 dark:text-white line-clamp-1">{{ base.name || 'Untitled Base' }}</h3>
-                  <p class="text-[10px] text-slate-400 mt-1 uppercase">Added on {{ base.created_at ? new Date(base.created_at).toLocaleDateString() : 'Unknown date' }}</p>
+            <!-- Content Area -->
+            <div class="p-5 flex-1 flex flex-col">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white line-clamp-1">{{ base.name || 'Untitled Base' }}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                           Ajouté le {{ base.created_at ? new Date(base.created_at).toLocaleDateString() : 'N/A' }}
+                        </p>
+                    </div>
                 </div>
-                <div class="flex items-center gap-1 text-amber-500 font-bold text-xs">
-                   <Star class="w-3 h-3 fill-current" />
-                   <span>5.0</span>
-                 </div>
-              </div>
+
+                <!-- Actions Grid -->
+                <div class="grid grid-cols-2 gap-3 mt-auto">
+                    <button 
+                        @click="copyToClipboard(base.link)"
+                        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                    >
+                        <Copy class="w-4 h-4" />
+                        <span>Copier</span>
+                    </button>
+                    
+                    <a 
+                        :href="base.link" 
+                        target="_blank"
+                        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                    >
+                        <span>Ouvrir</span>
+                        <ExternalLink class="w-4 h-4" />
+                    </a>
+                </div>
+                
+                 <!-- Admin delete button -->
+                 <button 
+                   v-if="isAdmin" 
+                   class="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 text-xs font-medium transition-colors"
+                   :disabled="isDeleting === base.id"
+                   @click="handleDeleteBase(base.id)"
+                 >
+                   <X class="w-3 h-3" />
+                   {{ isDeleting === base.id ? 'Suppression...' : 'Supprimer' }}
+                 </button>
             </div>
           </div>
         </div>
@@ -283,7 +304,7 @@ const handleDeleteBase = async (id: number) => {
               <div class="space-y-1">
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Town Hall</label>
                 <select v-model="newBase.th" class="w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5">
-                  <option v-for="th in [17, 16]" :key="th" :value="th">TH{{ th }}</option>
+                  <option v-for="th in [18, 17, 16]" :key="th" :value="th">TH{{ th }}</option>
                 </select>
               </div>
               <div class="space-y-1">
