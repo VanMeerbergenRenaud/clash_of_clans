@@ -75,19 +75,19 @@ export interface Database {
             }
             tracked_clans: {
                 Row: {
-                    id: number
+                    ordered: number
                     created_at: string
                     name: string
                     tag: string
                 }
                 Insert: {
-                    id?: number
+                    ordered: number
                     created_at?: string
                     name: string
                     tag: string
                 }
                 Update: {
-                    id?: number
+                    ordered?: number
                     created_at?: string
                     name?: string
                     tag?: string
@@ -125,42 +125,48 @@ export interface Database {
             wars: {
                 Row: {
                     id: number
-                    created_at: string
+                    created_at?: string
+                    end_date: string
+                    team_size: number
                     clan_tag: string
+                    clan_name: string
+                    clan_stars: number
+                    clan_destruction: number
                     opponent_tag: string
                     opponent_name: string
-                    war_date: string
+                    opponent_stars: number
+                    opponent_destruction: number
                     result: string | null
-                    stars_us: number
-                    stars_them: number
-                    percentage_us: number
-                    percentage_them: number
                 }
                 Insert: {
                     id?: number
                     created_at?: string
+                    end_date: string
+                    team_size: number
                     clan_tag: string
+                    clan_name: string
+                    clan_stars: number
+                    clan_destruction: number
                     opponent_tag: string
                     opponent_name: string
-                    war_date: string
+                    opponent_stars: number
+                    opponent_destruction: number
                     result?: string | null
-                    stars_us: number
-                    stars_them: number
-                    percentage_us: number
-                    percentage_them: number
                 }
                 Update: {
                     id?: number
                     created_at?: string
+                    end_date?: string
+                    team_size?: number
                     clan_tag?: string
+                    clan_name?: string
+                    clan_stars?: number
+                    clan_destruction?: number
                     opponent_tag?: string
                     opponent_name?: string
-                    war_date?: string
+                    opponent_stars?: number
+                    opponent_destruction?: number
                     result?: string | null
-                    stars_us?: number
-                    stars_them?: number
-                    percentage_us?: number
-                    percentage_them?: number
                 }
             }
             league_history: {
