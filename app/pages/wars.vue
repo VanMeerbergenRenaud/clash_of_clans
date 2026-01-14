@@ -257,9 +257,9 @@ onMounted(() => {
 <template>
   <div class="space-y-8 pb-32">
     
-    <!-- HEADER: Minimalist + Clan Selector -->
-    <div class="flex flex-col gap-6">
-       <!-- Top Row: Title & View Switcher -->
+    <!-- HEADER: Title, Clan Selector & View Switcher -->
+    <div class="flex flex-col gap-5">
+       <!-- Top Row: Title & Controls -->
        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
              <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white">
@@ -268,47 +268,50 @@ onMounted(() => {
              Guerres
           </h1>
 
-          <!-- Minimalist Segmented Control -->
-          <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg self-start md:self-center">
-             <button 
-               @click="viewMode = 'participants'"
-               class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"
-               :class="viewMode === 'participants' 
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' 
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-             >
-               Participants
-             </button>
-             <button 
-               @click="viewMode = 'results'"
-               class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"
-               :class="viewMode === 'results' 
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' 
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-             >
-               Historique
-             </button>
+          <div class="flex items-center gap-3">
+            <!-- Clan Selector Dropdown -->
+            <div class="relative">
+              <select 
+                v-model="selectedClanTag"
+                class="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-slate-900 dark:text-white cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all min-w-[160px]"
+              >
+                <option v-for="clan in trackedClans" :key="clan.tag" :value="clan.tag">
+                  {{ clan.name }}
+                </option>
+              </select>
+              <!-- Custom dropdown arrow -->
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <ChevronDown class="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+
+            <!-- View Switcher -->
+            <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+               <button 
+                 @click="viewMode = 'participants'"
+                 class="px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap"
+                 :class="viewMode === 'participants' 
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' 
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+               >
+                 Guerre en cours
+               </button>
+               <button 
+                 @click="viewMode = 'results'"
+                 class="px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap"
+                 :class="viewMode === 'results' 
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' 
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+               >
+                 Historique
+               </button>
+            </div>
           </div>
        </div>
        
-       <!-- Clan Selector Pills -->
-       <div class="flex flex-wrap gap-2">
-          <button 
-            v-for="clan in trackedClans" 
-            :key="clan.tag"
-            @click="selectedClanTag = clan.tag"
-            class="px-4 py-2 rounded-full text-sm font-medium transition-all border outline-none"
-            :class="selectedClanTag === clan.tag 
-              ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white' 
-              : 'bg-transparent text-slate-500 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600'"
-          >
-            {{ clan.name }}
-          </button>
-          
-          <div v-if="loading && trackedClans.length === 0" class="animate-pulse flex gap-2">
-             <div class="h-8 w-24 bg-slate-100 dark:bg-slate-800 rounded-full"></div>
-             <div class="h-8 w-24 bg-slate-100 dark:bg-slate-800 rounded-full"></div>
-          </div>
+       <!-- Loading skeleton for clan selector -->
+       <div v-if="loading && trackedClans.length === 0" class="animate-pulse flex gap-2">
+          <div class="h-10 w-40 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
        </div>
     </div>
 
