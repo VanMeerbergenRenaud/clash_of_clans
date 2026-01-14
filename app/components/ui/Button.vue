@@ -22,19 +22,13 @@ const variants = {
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
 }
 
-const sizes = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2',
-  lg: 'px-6 py-3 text-lg',
-}
 </script>
 
 <template>
   <button
     :class="[
-      'inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
+      'inline-flex px-3 py-2 items-center justify-center text-xs md:text-sm font-semibold rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
       variants[variant],
-      sizes[size],
       block ? 'w-full' : ''
     ]"
     v-bind="$attrs"

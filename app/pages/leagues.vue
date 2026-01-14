@@ -462,17 +462,17 @@ onMounted(() => {
                 
                 <div class="min-w-0">
                   <div class="flex items-center gap-2 mb-0.5">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded leading-none">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded leading-none">
                       {{ h.season }}
                     </span>
                     <h3 class="font-bold text-slate-900 truncate">{{ h.league_name }}</h3>
                   </div>
                   <div class="flex items-center gap-3 text-xs text-slate-400 font-medium">
                      <div class="flex items-center gap-1">
-                        <StarIcon class="w-3 h-3 text-amber-400 fill-amber-400" /> {{ h.total_stars }} stars
+                        <StarIcon class="w-3 h-3 text-amber-400 fill-amber-400" /> {{ h.total_stars }} étoiles
                      </div>
                      <div class="flex items-center gap-1 tabular-nums">
-                        {{ h.total_destruction }}% damage
+                        {{ h.total_destruction }}% destruction
                      </div>
                   </div>
                 </div>

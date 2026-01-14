@@ -4,6 +4,7 @@ create table public.base_link (
   type character varying null default 'trophy'::character varying,
   th numeric null default '18'::numeric,
   link character varying null,
+  image_url character varying null,
   created_at timestamp with time zone not null default now(),
   constraint base_link_pkey primary key (id)
 ) TABLESPACE pg_default;
