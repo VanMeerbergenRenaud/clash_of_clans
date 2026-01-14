@@ -24,10 +24,18 @@ export default defineEventHandler(async (event) => {
     }
 
     if (!clans || clans.length === 0) {
+        // Log skipped
+        await client.from('cron_logs').insert({
+            task_name: 'record-wars',
+            status: 'skipped',
+            message: 'Aucun clan suivi.',
+            items_count: 0
+        })
         return { message: 'Aucun clan suivi.' }
     }
 
     const results = []
+    let updatedCount = 0
 
     // Helper to parse CoC Dates (YYYYMMDDTHHHmmss.000Z) to ISO
     const parseCocDate = (dateStr: string) => {
@@ -120,6 +128,8 @@ export default defineEventHandler(async (event) => {
                 if (partError) throw partError
             }
 
+            // Count successful updates
+            if (savedWar) updatedCount++
             results.push({ tag: clan.tag, status: 'success', warId: savedWar.id })
 
         } catch (e: any) {
@@ -127,6 +137,16 @@ export default defineEventHandler(async (event) => {
             results.push({ tag: clan.tag, error: e.message || 'Unknown error' })
         }
     }
+
+
+
+    // Log final result
+    await client.from('cron_logs').insert({
+        task_name: 'record-wars',
+        status: 'success',
+        message: `Processed ${clans.length} clans. Updated ${updatedCount} wars.`,
+        items_count: updatedCount
+    })
 
     return {
         success: true,
