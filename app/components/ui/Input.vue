@@ -13,7 +13,7 @@ defineEmits(['update:modelValue'])
 
 <template>
   <div class="space-y-1">
-    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+    <label v-if="label" class="block text-sm font-medium text-slate-700">
       {{ label }}
     </label>
     <div class="relative">
@@ -25,13 +25,13 @@ defineEmits(['update:modelValue'])
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         :type="type || 'text'"
         :placeholder="placeholder"
-        class="block w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5 transition-colors"
+        class="block w-full rounded-xl border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5 transition-colors"
         :class="{ 
           'pl-10': icon,
           'border-red-300 focus:border-red-500 focus:ring-red-500': error
         }"
       />
     </div>
-    <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+    <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
   </div>
 </template>

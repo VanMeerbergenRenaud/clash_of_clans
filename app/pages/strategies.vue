@@ -102,11 +102,11 @@ const filteredStrats = computed(() => {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
       <div>
-        <h1 class="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h1 class="text-3xl font-bold text-slate-900 flex items-center gap-2">
           <Layers class="w-8 h-8 text-indigo-600" />
           Stratégies d'Attaque
         </h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1">Apprenez et maîtrisez les meilleures compositions</p>
+        <p class="text-slate-500 mt-1">Apprenez et maîtrisez les meilleures compositions</p>
       </div>
 
       <UiButton @click="showAddModal = true" :icon="Plus">Proposer une Stratégie</UiButton>
@@ -121,7 +121,7 @@ const filteredStrats = computed(() => {
         class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 border"
         :class="selectedType === type.id 
           ? 'bg-indigo-600 text-white border-indigo-600' 
-          : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'"
+          : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'"
       >
         <component :is="type.icon" class="w-4 h-4" />
         {{ type.label }}
@@ -139,7 +139,7 @@ const filteredStrats = computed(() => {
        </UiAlert>
     </div>
 
-    <div v-else-if="filteredStrats.length === 0" class="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+    <div v-else-if="filteredStrats.length === 0" class="text-center py-20 bg-white rounded-3xl border border-slate-200">
       <p class="text-slate-500">Aucune stratégie trouvée.</p>
     </div>
 
@@ -147,7 +147,7 @@ const filteredStrats = computed(() => {
       <div 
         v-for="strat in filteredStrats" 
         :key="strat.id"
-        class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors flex flex-col md:flex-row gap-6 group"
+        class="bg-white rounded-2xl p-6 border border-slate-200 hover:border-indigo-300 transition-colors flex flex-col md:flex-row gap-6 group"
       >
         <!-- Thumbnail -->
         <div class="w-full md:w-64 h-36 bg-slate-900 rounded-xl relative overflow-hidden flex-shrink-0 group-hover:ring-2 ring-indigo-500/50 transition-all">
@@ -164,11 +164,11 @@ const filteredStrats = computed(() => {
           <div class="flex justify-between items-start">
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-xl font-bold text-slate-900 dark:text-white">{{ strat.title }}</h3>
+                <h3 class="text-xl font-bold text-slate-900">{{ strat.title }}</h3>
                 <UiBadge variant="default" class="text-xs">TH{{ strat.min_town_hall }}</UiBadge>
                 <UiBadge variant="info" class="text-xs capitalize">{{ strat.type }}</UiBadge>
               </div>
-              <p class="text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ strat.description }}</p>
+              <p class="text-slate-500 mt-1 line-clamp-2">{{ strat.description }}</p>
             </div>
             <UiButton 
               v-if="isAdmin" 
@@ -184,11 +184,11 @@ const filteredStrats = computed(() => {
               Ajouté le {{ new Date(strat.created_at).toLocaleDateString() }}
             </div>
             <div class="flex gap-3">
-              <a v-if="strat.army_link" :href="strat.army_link" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+              <a v-if="strat.army_link" :href="strat.army_link" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
                 <ExternalLink class="w-4 h-4" />
                 Lien Armée
               </a>
-              <a v-if="strat.video_url" :href="strat.video_url" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+              <a v-if="strat.video_url" :href="strat.video_url" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
                 <PlayCircle class="w-4 h-4" />
                 Voir Tuto
               </a>
@@ -202,31 +202,31 @@ const filteredStrats = computed(() => {
     <ClientOnly>
       <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showAddModal = false"></div>
-        <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-          <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Proposer une stratégie</h2>
-            <button @click="showAddModal = false" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+        <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+          <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-slate-900">Proposer une stratégie</h2>
+            <button @click="showAddModal = false" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
               <X class="w-5 h-5 text-slate-500" />
             </button>
           </div>
           <form @submit.prevent="handleAddStrategy" class="p-6 space-y-4">
             <UiInput v-model="newStrat.title" label="Nom de la compo" placeholder="ex: Queen Walk Hybrid" required />
             <div class="space-y-1">
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
-              <textarea v-model="newStrat.description" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5 min-h-[100px]" placeholder="Détails de l'attaque..."></textarea>
+              <label class="block text-sm font-medium text-slate-700">Description</label>
+              <textarea v-model="newStrat.description" class="w-full rounded-xl border border-slate-300 bg-white text-slate-900 px-4 py-2.5 min-h-[100px]" placeholder="Détails de l'attaque..."></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Type</label>
-                <select v-model="newStrat.type" class="w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5">
+                <label class="block text-sm font-medium text-slate-700">Type</label>
+                <select v-model="newStrat.type" class="w-full rounded-xl border-slate-300 bg-white text-slate-900 px-4 py-2.5">
                   <option value="ground">Sol</option>
                   <option value="air">Aérien</option>
                   <option value="hybrid">Hybride</option>
                 </select>
               </div>
               <div class="space-y-1">
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">TH Minimum</label>
-                <input v-model.number="newStrat.min_town_hall" type="number" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5" />
+                <label class="block text-sm font-medium text-slate-700">TH Minimum</label>
+                <input v-model.number="newStrat.min_town_hall" type="number" class="w-full rounded-xl border border-slate-300 bg-white text-slate-900 px-4 py-2.5" />
               </div>
             </div>
             <UiInput v-model="newStrat.army_link" label="Lien de l'armée" placeholder="https://link.clashofclans.com/..." />

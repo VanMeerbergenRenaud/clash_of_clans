@@ -155,21 +155,21 @@ const handleDeleteBase = async (id: number) => {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
       <div>
-        <h1 class="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h1 class="text-3xl font-bold text-slate-900 flex items-center gap-2">
           <Map class="w-8 h-8 text-emerald-600" />
           Base Layouts
         </h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1">Trouvez et partagez les meilleures défenses</p>
+        <p class="text-slate-500 mt-1">Trouvez et partagez les meilleures défenses</p>
       </div>
       
       <div v-if="isMounted" class="flex flex-col sm:flex-row gap-4">
-        <div class="flex items-center bg-white dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center bg-white rounded-xl p-1 border border-slate-200">
           <button 
             v-for="th in thLevels" 
             :key="th"
             @click="selectedTH = th"
             class="px-3 py-1.5 rounded-lg text-sm font-bold transition-all"
-            :class="selectedTH === th ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+            :class="selectedTH === th ? 'bg-emerald-100 text-emerald-700' : 'text-slate-500 hover:text-slate-700'"
           >
             {{ th === 'All' ? 'Tous' : 'TH' + th }}
           </button>
@@ -190,8 +190,8 @@ const handleDeleteBase = async (id: number) => {
             @click="selectedType = type"
             class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border"
             :class="selectedType === type 
-              ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white' 
-              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'"
+              ? 'bg-slate-900 text-white border-slate-900' 
+              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
           >
             {{ type }}
           </button>
@@ -201,20 +201,20 @@ const handleDeleteBase = async (id: number) => {
         <!-- Error Message -->
         <UiAlert v-if="errorMessage" title="Erreur de connexion" variant="destructive">
           <p>{{ errorMessage }}</p>
-          <UiButton size="sm" variant="outline" class="mt-3 border-red-200 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/20" @click="fetchBases">Réessayer</UiButton>
+          <UiButton size="sm" variant="outline" class="mt-3 border-red-200 hover:bg-red-100" @click="fetchBases">Réessayer</UiButton>
         </UiAlert>
 
         <!-- Grid -->
         <div v-if="loadingBases" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          <div v-for="i in 3" :key="i" class="h-64 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse flex items-center justify-center">
+          <div v-for="i in 3" :key="i" class="h-64 bg-slate-100 rounded-2xl animate-pulse flex items-center justify-center">
             <Loader2 class="w-8 h-8 text-slate-300 animate-spin" />
           </div>
         </div>
         
-        <div v-else-if="filteredBases.length === 0" class="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+        <div v-else-if="filteredBases.length === 0" class="text-center py-20 bg-white rounded-3xl border border-slate-200">
           <div class="max-w-xs mx-auto space-y-4">
-            <div class="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto text-2xl">📭</div>
-            <h3 class="font-bold text-slate-900 dark:text-white">Aucune base trouvée</h3>
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-2xl">📭</div>
+            <h3 class="font-bold text-slate-900">Aucune base trouvée</h3>
             <p class="text-slate-500 text-sm">Affiniez vos filtres ou ajoutez la première base !</p>
             <UiButton size="sm" variant="outline" @click="selectedTH = 'All'; selectedType = 'All'">Reset Filters</UiButton>
           </div>
@@ -224,10 +224,10 @@ const handleDeleteBase = async (id: number) => {
           <div 
             v-for="base in filteredBases" 
             :key="base.id"
-            class="group flex flex-col bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300"
+            class="group flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-emerald-500/50 transition-all duration-300"
           >
             <!-- Image Area - Bigger -->
-            <div class="aspect-[4/3] bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
+            <div class="aspect-[4/3] bg-slate-100 relative overflow-hidden">
               <img :src="thImages[base.th] || thImages[16]" alt="Preview" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
               
               <!-- Badges -->
@@ -241,8 +241,8 @@ const handleDeleteBase = async (id: number) => {
             <div class="p-5 flex-1 flex flex-col">
                 <div class="flex justify-between items-start mb-6">
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 dark:text-white line-clamp-1">{{ base.name || 'Untitled Base' }}</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <h3 class="font-bold text-lg text-slate-900 line-clamp-1">{{ base.name || 'Untitled Base' }}</h3>
+                        <p class="text-xs text-slate-500 mt-1">
                            Ajouté le {{ base.created_at ? new Date(base.created_at).toLocaleDateString() : 'N/A' }}
                         </p>
                     </div>
@@ -252,7 +252,7 @@ const handleDeleteBase = async (id: number) => {
                 <div class="grid grid-cols-2 gap-3 mt-auto">
                     <button 
                         @click="copyToClipboard(base.link)"
-                        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition-colors"
                     >
                         <Copy class="w-4 h-4" />
                         <span>Copier</span>
@@ -261,7 +261,7 @@ const handleDeleteBase = async (id: number) => {
                     <a 
                         :href="base.link" 
                         target="_blank"
-                        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
                     >
                         <span>Ouvrir</span>
                         <ExternalLink class="w-4 h-4" />
@@ -271,7 +271,7 @@ const handleDeleteBase = async (id: number) => {
                  <!-- Admin delete button -->
                  <button 
                    v-if="isAdmin" 
-                   class="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 text-xs font-medium transition-colors"
+                   class="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 text-xs font-medium transition-colors"
                    :disabled="isDeleting === base.id"
                    @click="handleDeleteBase(base.id)"
                  >
@@ -289,10 +289,10 @@ const handleDeleteBase = async (id: number) => {
       <div v-if="showAddModal && isMounted" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showAddModal = false"></div>
         
-        <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-          <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Nouvelle base</h2>
-            <button @click="showAddModal = false" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+        <div class="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden border border-slate-200">
+          <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-slate-900">Nouvelle base</h2>
+            <button @click="showAddModal = false" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
               <X class="w-5 h-5 text-slate-500" />
             </button>
           </div>
@@ -302,14 +302,14 @@ const handleDeleteBase = async (id: number) => {
             
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Town Hall</label>
-                <select v-model="newBase.th" class="w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5">
+                <label class="block text-sm font-medium text-slate-700">Town Hall</label>
+                <select v-model="newBase.th" class="w-full rounded-xl border-slate-300 bg-white text-slate-900 px-4 py-2.5">
                   <option v-for="th in [18, 17, 16]" :key="th" :value="th">TH{{ th }}</option>
                 </select>
               </div>
               <div class="space-y-1">
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Type</label>
-                <select v-model="newBase.type" class="w-full rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-2.5">
+                <label class="block text-sm font-medium text-slate-700">Type</label>
+                <select v-model="newBase.type" class="w-full rounded-xl border-slate-300 bg-white text-slate-900 px-4 py-2.5">
                   <option v-for="type in types.filter(t => t !== 'All')" :key="type" :value="type">{{ type }}</option>
                 </select>
               </div>

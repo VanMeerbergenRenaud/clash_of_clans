@@ -4,8 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [
     '@nuxtjs/tailwindcss',
-    '@nuxtjs/supabase',
-    '@nuxtjs/color-mode'
+    '@nuxtjs/supabase'
   ],
   supabase: {
     redirect: false

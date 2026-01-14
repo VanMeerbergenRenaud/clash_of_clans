@@ -24,16 +24,16 @@ defineEmits(['close'])
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" @click="$emit('close')"></div>
 
         <!-- Panel -->
-        <div class="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 text-left shadow-xl transition-all border border-slate-200 dark:border-slate-700">
+        <div class="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-xl transition-all border border-slate-200">
           
           <!-- Header -->
           <div class="flex items-center justify-between mb-5">
-            <h3 v-if="title" class="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 v-if="title" class="text-lg font-bold text-slate-900">
               {{ title }}
             </h3>
             <button 
               @click="$emit('close')"
-              class="rounded-lg p-1 text-slate-400 hover:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="rounded-lg p-1 text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <X class="w-5 h-5" />
             </button>
