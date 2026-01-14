@@ -801,7 +801,7 @@ onMounted(() => {
                       <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
                           <StarIcon class="w-4 h-4" />
-                          Six Étoiles (6★)
+                          6 Étoiles
                         </h3>
                         <span class="text-sm font-bold px-2.5 py-1 bg-amber-200/50 dark:bg-amber-900/30 rounded-full text-amber-700 dark:text-amber-400">{{ historyStats.sixStars.length }}</span>
                       </div>

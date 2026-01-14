@@ -38,6 +38,7 @@ const leagueParticipants = ref<any[]>([])
 const leagueClans = ref<any[]>([])
 const loadingLeagueDetails = ref(false)
 const showLeagueModal = ref(false)
+const showGroupRanking = ref(false)
 
 // Sorting and Tabs
 const activeStatTab = ref<'pending' | 'perfect' | 'completed' | 'struggling'>('pending')
@@ -203,24 +204,44 @@ const sortedParticipants = computed(() => {
 const leagueSessionStats = computed(() => {
   if (!leagueParticipants.value.length) return { best: [], missing: [] }
   
-  // Calculate best performers (most 3 stars)
-  // We look into daily_attacks JSON if available, or just use total_stars/3 as an estimate 
-  // but better to count 3-star attacks specifically from daily_attacks
-  const best = leagueParticipants.value
-    .map(p => {
-      const threeStarCount = (p.daily_attacks || []).filter((a: any) => a.stars === 3).length
-      return { ...p, threeStarCount }
+  // Calculate best performers
+  const playersWithStats = leagueParticipants.value.map(p => {
+    // A player is "perfect" if they used at least one attack and ALL their attacks are 3-stars
+    // Since 3 is max, total_stars === attacks_used * 3 is equivalent to "only 3-star attacks"
+    const isPerfect = (p.attacks_used || 0) > 0 && (p.total_stars || 0) === (p.attacks_used || 0) * 3
+    const threeStarCount = (p.daily_attacks || []).filter((a: any) => a.stars === 3).length
+    return { ...p, isPerfect, threeStarCount }
+  })
+
+  // 1. All perfect performers, sorted by number of attacks then destruction
+  const perfects = playersWithStats
+    .filter(p => p.isPerfect)
+    .sort((a, b) => (b.attacks_used - a.attacks_used) || (b.total_destruction - a.total_destruction))
+
+  // 2. Other performers, sorted by three star count, then total stars, then destruction
+  const others = playersWithStats
+    .filter(p => !p.isPerfect)
+    .sort((a, b) => {
+      if (b.threeStarCount !== a.threeStarCount) return b.threeStarCount - a.threeStarCount
+      if (b.total_stars !== a.total_stars) return b.total_stars - a.total_stars
+      return b.total_destruction - a.total_destruction
     })
-    .filter(p => p.threeStarCount >= 5) // At least 5 triples in the week
-    .sort((a, b) => b.threeStarCount - a.threeStarCount)
-    .slice(0, 5)
+
+  // Combine: all perfects + enough others to reach 10 if available
+  let combined = [...perfects]
+  if (combined.length < 10) {
+    combined = [...combined, ...others.slice(0, 10 - combined.length)]
+  } else {
+    // If more than 10 perfects, limit to 10 as per "max 10 results"
+    combined = combined.slice(0, 10)
+  }
 
   // Calculate missing attacks
   const missing = leagueParticipants.value
-    .filter(p => p.attacks_used < 7)
-    .sort((a, b) => a.attacks_used - b.attacks_used)
+    .filter(p => (p.attacks_used || 0) < 7)
+    .sort((a, b) => (a.attacks_used || 0) - (b.attacks_used || 0))
 
-  return { best, missing }
+  return { best: combined, missing }
 })
 
 watch(selectedClanTag, (newVal) => {
@@ -330,9 +351,12 @@ onMounted(() => {
                      </tr>
                    </thead>
                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                     <tr v-for="(c, idx) in leagueGroup.clans" :key="c.tag" :class="{ 'bg-indigo-50/50 dark:bg-indigo-900/10': c.tag === selectedClanTag }">
-                       <td class="px-6 py-4 font-bold text-slate-400">{{ Number(idx) + 1 }}</td>
-                       <td class="px-6 py-4 font-bold">{{ c.name }} <span v-if="c.tag === selectedClanTag" class="text-[10px] bg-indigo-500 text-white px-1.5 rounded ml-1">MOI</span></td>
+                      <tr v-for="(c, idx) in leagueGroup.clans" :key="c.tag" :class="c.tag === selectedClanTag ? 'bg-slate-50 dark:bg-slate-800/50' : ''">
+                        <td class="px-6 py-4 font-bold text-slate-400">{{ Number(idx) + 1 }}</td>
+                        <td class="px-6 py-4 font-bold">
+                          <span :class="c.tag === selectedClanTag ? 'text-slate-900 dark:text-slate-200' : ''">{{ c.name }}</span>
+                          <span v-if="c.tag === selectedClanTag" class="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 px-1.5 rounded ml-1 font-medium">MOI</span>
+                        </td>
                        <td class="px-6 py-4 text-center font-mono font-bold">--</td>
                        <td class="px-6 py-4 text-right font-mono">--%</td>
                      </tr>
@@ -403,62 +427,50 @@ onMounted(() => {
             <p class="text-slate-400 text-sm">Aucun historique disponible.</p>
           </div>
 
-          <div v-else class="grid grid-cols-1 gap-5">
+          
+          <div v-else class="space-y-3">
             <button 
               v-for="h in leagueHistory" 
               :key="h.id" 
               @click="fetchLeagueDetails(h)" 
-              class="group w-full text-left bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-900/50 transition-all duration-300 overflow-hidden shadow-sm"
+              class="group w-full flex flex-col md:flex-row md:items-center justify-between p-4 md:p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl transition-all duration-200"
             >
-              <!-- Top Bar (Minimalist) -->
-              <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded">
-                    Saison {{ h.season }}
-                  </span>
+              <!-- Info Section -->
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors shrink-0">
+                  <Trophy class="w-5 h-5" />
                 </div>
-                <div class="flex items-center gap-4 text-xs text-slate-400">
-                   <div class="flex items-center gap-1.5 font-medium">
-                      <Calendar class="w-3.5 h-3.5" /> 7 Jours
-                   </div>
-                </div>
-              </div>
-
-              <!-- Main Card Content -->
-              <div class="p-6">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div class="flex items-center gap-5">
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shrink-0">
-                      <Trophy class="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 class="text-xl font-black text-slate-900 dark:text-white leading-tight">{{ h.league_name }}</h3>
-                      <div class="flex items-center gap-3 mt-1.5">
-                        <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                          <StarIcon class="w-3.5 h-3.5 text-amber-500 fill-current" /> {{ h.total_stars }}
-                        </div>
-                        <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono">
-                          {{ h.total_destruction }}%
-                        </div>
-                      </div>
-                    </div>
+                
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 mb-0.5">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded leading-none">
+                      {{ h.season }}
+                    </span>
+                    <h3 class="font-bold text-slate-900 dark:text-white truncate">{{ h.league_name }}</h3>
                   </div>
-
-                  <div class="flex items-center gap-8 self-end md:self-center">
-                    <div class="text-right">
-                       <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Rang Final</div>
-                       <div class="text-3xl font-black tabular-nums" :class="h.final_rank === 1 ? 'text-amber-500' : 'text-slate-900 dark:text-white'">
-                         #{{ h.final_rank }}
-                       </div>
-                    </div>
+                  <div class="flex items-center gap-3 text-xs text-slate-400 font-medium">
+                     <div class="flex items-center gap-1">
+                        <StarIcon class="w-3 h-3 text-amber-400 fill-amber-400" /> {{ h.total_stars }} stars
+                     </div>
+                     <span class="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700"></span>
+                     <div class="flex items-center gap-1 tabular-nums">
+                        {{ h.total_destruction }}% damage
+                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Bottom Action Bar (Minimalist) -->
-              <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-indigo-500 transition-colors">Détails de la saison</span>
-                <ChevronRight class="w-4 h-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+              <!-- Action/Rank Section -->
+              <div class="flex items-center justify-between md:justify-end gap-6 mt-4 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-50 dark:border-slate-800">
+                <div class="flex flex-col items-end">
+                   <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Classement</span>
+                   <span class="text-xl font-black tabular-nums" :class="h.final_rank === 1 ? 'text-amber-500' : 'text-slate-900 dark:text-white'">
+                     #{{ h.final_rank }}
+                   </span>
+                </div>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-500 text-slate-300 transition-all">
+                   <ChevronRight class="w-4 h-4" />
+                </div>
               </div>
             </button>
           </div>
@@ -466,173 +478,310 @@ onMounted(() => {
       </Transition>
     </div>
 
-    <!-- LEAGUE DETAIL MODAL (Minimalist Alignment) -->
+    <!-- LEAGUE DETAIL MODAL (Clean & Minimalist) -->
     <Teleport to="body">
        <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
        <div v-if="showLeagueModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
           <!-- Backdrop -->
-          <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="closeLeagueModal"></div>
+          <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="closeLeagueModal"></div>
           
           <!-- Modal Content -->
           <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95 translate-y-8" enter-to-class="opacity-100 scale-100 translate-y-0" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100 translate-y-0" leave-to-class="opacity-0 scale-95 translate-y-8">
-          <div class="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col">
+          <div class="relative bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
              
-             <!-- Modal Header (Minimalist) -->
-             <div class="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                <div class="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
-                   <div class="flex items-center gap-3">
-                      <span class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Saison {{ selectedLeagueHistory?.season }}</span>
-                      <span class="text-slate-300 dark:text-slate-700">•</span>
-                      <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">{{ selectedLeagueHistory?.league_name }}</span>
-                   </div>
-                   <button @click="closeLeagueModal" class="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 transition-colors"><X class="w-5 h-5" /></button>
+             <!-- Modal Header Bar -->
+             <div class="px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-4">
+                   <span class="text-sm text-slate-500 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
+                      {{ selectedLeagueHistory?.league_name }}
+                   </span>
+                   <span class="text-sm text-slate-500 flex items-center gap-1.5">
+                      <Calendar class="w-3.5 h-3.5" />
+                      Saison {{ selectedLeagueHistory?.season }}
+                   </span>
                 </div>
+                <button @click="closeLeagueModal" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors">
+                   <X class="w-5 h-5" />
+                </button>
+             </div>
 
-                <div class="px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-6">
-                   <div class="flex items-center gap-5">
-                      <div class="w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shrink-0">
-                         <Trophy class="w-8 h-8" />
+             <!-- Score Summary (War-style layout) -->
+             <div class="px-8 py-6 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center justify-between">
+                   <!-- Our Clan -->
+                   <div class="flex items-center gap-4">
+                       <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                         <SwordsIcon class="w-5 h-5 text-slate-400" />
                       </div>
                       <div>
-                         <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-tight">Résultats de Ligue</h2>
-                         <div class="flex items-center gap-2 mt-1">
-                            <span class="text-3xl font-black text-slate-900 dark:text-white">#{{ selectedLeagueHistory?.final_rank }}</span>
-                            <span class="text-sm font-bold text-slate-400 uppercase tracking-widest px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-800">Position Finale</span>
-                         </div>
+                         <div class="font-bold text-slate-900 dark:text-white">{{ selectedClan?.name }}</div>
+                         <div class="text-xs text-slate-400">{{ selectedClanTag }}</div>
                       </div>
                    </div>
 
-                   <div class="flex gap-4">
-                      <div class="text-center px-6 py-3 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Étoiles</div>
-                         <div class="text-xl font-black text-indigo-500">{{ selectedLeagueHistory?.total_stars }}★</div>
+                   <!-- Stats Center -->
+                  <div class="flex items-center gap-10">
+
+                    <!-- Position -->
+                    <div class="flex flex-col items-center text-center space-y-1">
+                      <div class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        #{{ selectedLeagueHistory?.final_rank }}
                       </div>
-                      <div class="text-center px-6 py-3 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Dest.</div>
-                         <div class="text-xl font-black text-indigo-500 font-mono">{{ selectedLeagueHistory?.total_destruction }}%</div>
+                      <div class="text-[11px] uppercase tracking-wide text-slate-400">
+                        Position
                       </div>
+                    </div>
+                    <!-- Total Stars -->
+                    <div class="flex flex-col items-center text-center space-y-1">
+                      <div class="flex items-center gap-1">
+                        <span class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
+                          {{ selectedLeagueHistory?.total_stars }}
+                        </span>
+                        <StarIcon class="w-4 h-4 text-amber-400 fill-amber-400 -mt-px" />
+                      </div>
+                      <div class="text-[11px] uppercase tracking-wide text-slate-400">
+                        Étoiles
+                      </div>
+                    </div>
+                    <!-- Destruction -->
+                    <div class="flex flex-col items-center text-center space-y-1">
+                      <div class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        {{ selectedLeagueHistory?.total_destruction }}%
+                      </div>
+                      <div class="text-[11px] uppercase tracking-wide text-slate-400">
+                        Destruction
+                      </div>
+                    </div>
+                  </div>
+
+
+                   <!-- Season Info -->
+                   <div class="text-right">
+                      <div class="font-bold text-slate-900 dark:text-white">7 Rounds</div>
+                      <div class="text-xs text-slate-400">{{ leagueParticipants.length }} participants</div>
                    </div>
                 </div>
              </div>
 
              <!-- Modal Scrollable Content -->
-             <div class="p-8 space-y-12 overflow-y-auto custom-scrollbar flex-1">
+             <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                 
-                <!-- Group Rankings (Simplified Grid) -->
-                <section>
-                   <div class="flex items-center gap-3 mb-6">
-                      <div class="w-1.5 h-6 bg-indigo-500 rounded-full"></div>
-                      <h3 class="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Classement du Groupe</h3>
-                   </div>
-                   <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div v-for="c in leagueClans" :key="c.clan_tag" 
-                           class="p-4 rounded-2xl border transition-all flex flex-col items-center justify-center text-center shadow-sm" 
-                           :class="c.clan_tag === selectedClanTag ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-2 ring-indigo-500/10' : 'bg-white dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'"
-                      >
-                         <span class="text-[10px] font-black text-slate-400 mb-1">POS #{{ c.group_rank }}</span>
-                         <div class="font-bold text-sm truncate w-full px-2" :class="c.clan_tag === selectedClanTag ? 'text-indigo-600 dark:text-indigo-400 underline underline-offset-4' : 'text-slate-700 dark:text-slate-300'">{{ c.clan_name }}</div>
-                         <div class="mt-2 text-xs font-black tabular-nums">{{ c.total_stars }}★ <span class="text-[10px] font-medium text-slate-400 mx-1">/</span> {{ c.total_destruction }}%</div>
-                      </div>
-                   </div>
-                </section>
-
-                <!-- Best Performers & Alerts (Minimalist List Style) -->
-                <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <!-- Top Performers -->
-                   <div class="space-y-5">
+                <!-- Group Rankings (Collapsible) -->
+                <div v-if="leagueClans.length > 0" class="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                   <!-- Header (Clickable) -->
+                   <button 
+                      @click="showGroupRanking = !showGroupRanking" 
+                      class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                   >
                       <div class="flex items-center gap-3">
-                         <div class="w-1.5 h-6 bg-amber-500 rounded-full"></div>
-                         <h3 class="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Top Perforfeurs</h3>
-                      </div>
-                      <div v-if="leagueSessionStats.best.length > 0" class="space-y-2.5">
-                         <div v-for="p in leagueSessionStats.best" :key="p.player_tag" class="relative group p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center transition-all hover:bg-amber-50 dark:hover:bg-amber-900/10">
-                            <div class="flex items-center gap-4">
-                               <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 font-black text-xs">{{ p.map_position }}</div>
-                               <div class="font-bold text-sm text-slate-700 dark:text-slate-300">{{ p.player_name }}</div>
-                            </div>
-                            <div class="flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-black text-amber-500">
-                               {{ p.threeStarCount }} <StarIcon class="w-3.5 h-3.5 fill-current" />
-                            </div>
+                         <div class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <Trophy class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                          </div>
+                         <span class="font-semibold text-sm text-slate-700 dark:text-slate-300">Classement du groupe</span>
+                         <span class="text-xs text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded-full">{{ leagueClans.length }} clans</span>
                       </div>
-                      <div v-else class="py-12 bg-slate-50 dark:bg-slate-900/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 text-xs italic">Aucun joueur avec +5 triples</div>
-                   </div>
-
-                   <!-- Missing Attacks -->
-                   <div class="space-y-5">
-                      <div class="flex items-center gap-3">
-                         <div class="w-1.5 h-6 bg-red-500 rounded-full"></div>
-                         <h3 class="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Alertes Attaques</h3>
-                      </div>
-                      <div v-if="leagueSessionStats.missing.length > 0" class="space-y-2.5">
-                         <div v-for="p in leagueSessionStats.missing" :key="p.player_tag" class="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center transition-all hover:bg-red-50 dark:hover:bg-red-900/10">
-                            <div class="flex items-center gap-4">
-                               <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 font-black text-xs">{{ p.map_position }}</div>
-                               <div class="font-bold text-sm text-slate-700 dark:text-slate-300">{{ p.player_name }}</div>
-                            </div>
-                            <div class="text-[10px] font-black uppercase text-red-500 px-3 py-1 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 rounded-full">
-                               {{ 7 - p.attacks_used }} manquantes
-                            </div>
-                         </div>
-                      </div>
-                      <div v-else class="py-12 bg-green-50/30 dark:bg-green-900/10 rounded-3xl border border-dashed border-green-200 dark:border-green-800/50 text-center text-green-600 dark:text-green-400 text-xs font-bold px-6">
-                         ✓ Tous les joueurs ont complété leurs 7 attaques !
-                      </div>
-                   </div>
-                </section>
-
-                <!-- Full Participant Table (Minimalist) -->
-                <section>
-                   <div class="flex items-center justify-between mb-8">
-                      <div class="flex items-center gap-3">
-                         <div class="w-1.5 h-6 bg-slate-400 rounded-full"></div>
-                         <h3 class="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Performances des Joueurs</h3>
-                      </div>
-                      <span class="text-[11px] font-black text-slate-400 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full tabular-nums">{{ leagueParticipants.length }} JOUEURS</span>
-                   </div>
+                      <ChevronDown class="w-5 h-5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': showGroupRanking }" />
+                   </button>
                    
-                   <div class="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+                   <!-- Content (Collapsible) -->
+                   <Transition 
+                      enter-active-class="transition-all duration-200 ease-out" 
+                      enter-from-class="max-h-0 opacity-0" 
+                      enter-to-class="max-h-[500px] opacity-100" 
+                      leave-active-class="transition-all duration-200 ease-in" 
+                      leave-from-class="max-h-[500px] opacity-100" 
+                      leave-to-class="max-h-0 opacity-0"
+                   >
+                      <div v-show="showGroupRanking" class="border-t border-slate-200 dark:border-slate-700 overflow-hidden">
+                         <div class="p-2 space-y-1 bg-white dark:bg-slate-900">
+                            <div 
+                               v-for="c in leagueClans" 
+                               :key="c.clan_tag" 
+                               class="px-3 py-2.5 rounded-lg flex items-center gap-3 transition-all"
+                               :class="c.clan_tag === selectedClanTag 
+                                  ? 'bg-slate-100 dark:bg-slate-800/40 shadow-sm' 
+                                  : ''"
+                            >
+                               <!-- Position Badge -->
+                               <div 
+                                  class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                  :class="c.clan_tag === selectedClanTag 
+                                     ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' 
+                                     : c.group_rank === 1 
+                                        ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' 
+                                        : c.group_rank === 2 
+                                           ? 'bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300' 
+                                           : c.group_rank === 3 
+                                              ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
+                                              : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'"
+                               >
+                                  {{ c.group_rank }}
+                               </div>
+                               
+                               <!-- Clan Info -->
+                               <div class="flex-1 min-w-0">
+                                  <div class="font-bold text-sm truncate" :class="c.clan_tag === selectedClanTag ? 'text-slate-900 dark:text-slate-200' : 'text-slate-800 dark:text-slate-200'">
+                                     {{ c.clan_name }}
+                                  </div>
+                                  <div class="text-[10px] font-medium truncate" :class="c.clan_tag === selectedClanTag ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400'">
+                                     {{ c.clan_tag }}
+                                  </div>
+                               </div>
+                               
+                               <!-- Stats -->
+                               <div class="flex items-center gap-2 shrink-0">
+                                  <div class="flex items-center gap-1" :class="c.clan_tag === selectedClanTag ? 'text-slate-900 dark:text-slate-300' : 'text-slate-600 dark:text-slate-400'">
+                                     <span class="text-sm font-bold tabular-nums">{{ c.total_stars }}</span>
+                                     <StarIcon class="w-3.5 h-3.5" :class="c.clan_tag === selectedClanTag ? 'text-amber-500/80 fill-amber-500/80' : 'text-amber-400 fill-amber-400'" />
+                                  </div>
+                                  <span class="text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded" :class="c.clan_tag === selectedClanTag ? 'bg-slate-200/50 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'">
+                                     {{ c.total_destruction }}%
+                                  </span>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                   </Transition>
+                </div>
+
+                <!-- Highlight Cards (War-style) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <!-- Top Performers Card -->
+                   <div class="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10 overflow-hidden">
+                      <div class="px-4 py-3 flex items-center justify-between border-b border-amber-200/50 dark:border-amber-800/30">
+                         <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                            <StarIcon class="w-4 h-4 text-current" />
+                            <span class="font-semibold text-sm">Top Performeurs</span>
+                         </div>
+                         <span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{ leagueSessionStats.best.filter(p => p.isPerfect).length }}</span>
+                      </div>
+                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                         <div v-if="leagueSessionStats.best.length > 0">
+                            <div v-for="p in leagueSessionStats.best" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-amber-200/20 last:border-0">
+                               <div class="flex items-center gap-3">
+                                  <span class="text-xs font-medium text-slate-400 w-6">{{ p.map_position }}</span>
+                                  <div class="flex flex-col">
+                                    <span class="font-medium text-slate-700 dark:text-slate-300 text-sm flex items-center gap-1.5">
+                                      {{ p.player_name }}
+
+                                      <img v-if="p.threeStarCount === 7" src="~/assets/img/legend.png" class="w-4 h-4" alt="Legend" />
+
+                                    </span>
+                                    <span class="text-[9px] text-slate-500">{{ p.attacks_used }} attaque{{ p.attacks_used > 1 ? 's' : '' }}</span>
+                                  </div>
+                               </div>
+                               <span class="text-xs font-semibold text-amber-500 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">
+                                  {{ p.threeStarCount }} perfs
+                               </span>
+
+                            </div>
+                         </div>
+                         <div v-else class="py-6 text-center text-slate-400 text-xs">
+                            Aucune donnée de performance
+                         </div>
+                      </div>
+                   </div>
+
+                   <!-- Missing Attacks Card -->
+                   <div class="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10 overflow-hidden">
+                      <div class="px-4 py-3 flex items-center justify-between border-b border-red-200/50 dark:border-red-800/30">
+                         <div class="flex items-center gap-2 text-red-500 dark:text-red-400">
+                            <AlertCircle class="w-4 h-4" />
+                            <span class="font-semibold text-sm">Attaques Manquantes</span>
+                         </div>
+                         <span class="text-sm font-bold text-red-500 dark:text-red-400">{{ leagueSessionStats.missing.length }}</span>
+                      </div>
+                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                         <div v-if="leagueSessionStats.missing.length > 0">
+                            <div v-for="p in leagueSessionStats.missing" :key="p.player_tag" class="flex items-center justify-between py-2">
+                               <div class="flex items-center gap-3">
+                                  <span class="text-xs font-medium text-slate-400 w-6">{{ p.map_position }}</span>
+                                  <span class="font-medium text-slate-700 dark:text-slate-300 text-sm">{{ p.player_name }}</span>
+                               </div>
+                               <span class="text-xs font-semibold text-red-500 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded">-{{ 7 - p.attacks_used }} attaque{{ 7 - p.attacks_used > 1 ? 's' : '' }}</span>
+                            </div>
+                         </div>
+                         <div v-else class="py-6 text-center text-green-600 dark:text-green-400 text-xs font-medium">
+                            ✓ Toutes les attaques complétées
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <!-- Participants Table -->
+                <div>
+                   <div class="px-4 flex items-center justify-between mb-2.5">
+                      <div class="flex items-center gap-2 text-slate-500">
+                         <Users class="w-4 h-4" />
+                         <span class="font-semibold text-sm">Tous les participants</span>
+                      </div>
+                      <span class="text-xs font-medium text-slate-500">{{ leagueParticipants.length }} joueurs</span>
+                   </div>
+
+                   <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                       <div class="overflow-x-auto">
                          <table class="w-full text-sm">
                             <thead>
-                               <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 text-[10px] tracking-widest">
-                                  <th class="px-6 py-4 text-left w-20">
-                                     <button @click="toggleSort('map_position')" class="hover:text-indigo-500 uppercase flex items-center gap-1.5"># <ChevronDown v-if="sortColumn === 'map_position'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'asc' }" /></button>
+                               <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-medium border-b border-slate-100 dark:border-slate-800">
+                                  <th class="px-4 py-3 text-left w-12">
+                                     <button @click="toggleSort('map_position')" class="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
+                                        #
+                                        <ChevronUp v-if="sortColumn === 'map_position' && sortDirection === 'asc'" class="w-3 h-3" />
+                                        <ChevronDown v-else-if="sortColumn === 'map_position'" class="w-3 h-3" />
+                                     </button>
                                   </th>
-                                  <th class="px-6 py-4 text-left">JOUEUR / HDV</th>
-                                  <th class="px-6 py-4 text-center w-28">
-                                     <button @click="toggleSort('attacks_used')" class="hover:text-indigo-500 uppercase mx-auto flex items-center gap-1.5">ATTR / 7 <ChevronDown v-if="sortColumn === 'attacks_used'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'asc' }" /></button>
+                                  <th class="px-4 py-3 text-left">Joueur</th>
+                                  <th class="px-4 py-3 text-center">HDV</th>
+                                  <th class="px-4 py-3 text-center">
+                                     <button @click="toggleSort('attacks_used')" class="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 mx-auto">
+                                        Attaques
+                                        <ChevronUp v-if="sortColumn === 'attacks_used' && sortDirection === 'asc'" class="w-3 h-3" />
+                                        <ChevronDown v-else-if="sortColumn === 'attacks_used'" class="w-3 h-3" />
+                                     </button>
                                   </th>
-                                  <th class="px-6 py-4 text-center w-28">
-                                     <button @click="toggleSort('total_stars')" class="hover:text-indigo-500 uppercase mx-auto flex items-center gap-1.5">ÉTOILES <ChevronDown v-if="sortColumn === 'total_stars'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'asc' }" /></button>
+                                  <th class="px-4 py-3 text-center">
+                                     <button @click="toggleSort('total_stars')" class="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 mx-auto">
+                                        Étoiles
+                                        <ChevronUp v-if="sortColumn === 'total_stars' && sortDirection === 'asc'" class="w-3 h-3" />
+                                        <ChevronDown v-else-if="sortColumn === 'total_stars'" class="w-3 h-3" />
+                                     </button>
                                   </th>
-                                  <th class="px-6 py-4 text-right pr-6 w-32">
-                                     <button @click="toggleSort('total_destruction')" class="hover:text-indigo-500 uppercase ml-auto flex items-center gap-1.5">DEST. (%) <ChevronDown v-if="sortColumn === 'total_destruction'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'asc' }" /></button>
+                                  <th class="px-4 py-3 text-right">
+                                     <button @click="toggleSort('total_destruction')" class="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 ml-auto">
+                                        Destruction
+                                        <ChevronUp v-if="sortColumn === 'total_destruction' && sortDirection === 'asc'" class="w-3 h-3" />
+                                        <ChevronDown v-else-if="sortColumn === 'total_destruction'" class="w-3 h-3" />
+                                     </button>
                                   </th>
                                </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
-                               <tr v-for="p in sortedParticipants" :key="p.player_tag" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors tabular-nums">
-                                  <td class="px-6 py-4 font-black text-slate-300 text-xs">{{ p.map_position }}</td>
-                                  <td class="px-6 py-4">
-                                     <div class="font-bold text-slate-700 dark:text-slate-200">{{ p.player_name }}</div>
-                                     <div class="text-[10px] text-slate-400 font-medium">Hôtel de ville {{ p.town_hall_level }}</div>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                               <tr v-for="p in sortedParticipants" :key="p.player_tag" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td class="px-4 py-3 text-slate-400 text-xs font-medium">{{ p.map_position }}</td>
+                                  <td class="px-4 py-3">
+                                     <span class="font-medium text-slate-900 dark:text-white">{{ p.player_name }}</span>
                                   </td>
-                                  <td class="px-6 py-4 text-center">
-                                     <span class="text-xs font-bold" :class="p.attacks_used < 7 ? 'text-amber-500' : 'text-slate-400'">{{ p.attacks_used }}</span>
+                                  <td class="px-4 py-3 text-center">
+                                     <span class="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">HDV {{ p.town_hall_level }}</span>
                                   </td>
-                                  <td class="px-6 py-4 text-center">
-                                     <span class="font-black text-slate-900 dark:text-white">{{ p.total_stars }}★</span>
+                                  <td class="px-4 py-3 text-center">
+                                     <span class="font-semibold" :class="p.attacks_used === 7 ? 'text-green-500' : 'text-rose-500'">{{ p.attacks_used }}/7</span>
                                   </td>
-                                  <td class="px-6 py-4 text-right pr-6">
-                                     <span class="font-bold text-slate-600 dark:text-slate-400 decoration-slate-300 decoration-dotted">{{ p.total_destruction }}%</span>
+                                  <td class="px-4 py-3 text-center">
+                                     <span class="font-semibold text-slate-700 dark:text-white">
+                                      {{ p.total_stars }}
+                                      <span class="text-amber-400">★</span>
+                                    </span>
+                                  </td>
+                                  <td class="px-4 py-3 pr-11 font-medium text-right text-slate-600 dark:text-slate-400">
+                                    {{ p.total_destruction }} %
                                   </td>
                                </tr>
                             </tbody>
                          </table>
                       </div>
                    </div>
-                </section>
+                </div>
              </div>
           </div>
           </Transition>
