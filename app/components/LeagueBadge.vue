@@ -18,13 +18,11 @@ const leagueIcon = computed(() => {
   // Normalize name
   let base = ''
   if (n.includes('bronze')) base = 'bronze'
-  else if (n.includes('argent') || n.includes('silver')) base = 'argent'
-  else if (n.includes('or ') || n.includes('gold')) base = 'or'
-  else if (n.includes('cristal') || n.includes('crystal')) base = 'cristal'
+  else if (n.includes('argent') || n.includes('silver')) base = 'silver'
+  else if (n.includes('or ') || n.includes('gold')) base = 'gold'
+  else if (n.includes('cristal') || n.includes('crystal')) base = 'crystal'
   else if (n.includes('master')) base = 'master'
   else if (n.includes('champion')) base = 'champion'
-  else if (n.includes('titan')) base = 'titan'
-  else if (n.includes('legend')) return 'legend'
 
   if (!base) return 'no_league'
   return `${base}${rank}`

@@ -452,7 +452,7 @@ onMounted(() => {
             >
               <!-- Info Section -->
               <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors shrink-0">
+                <div class="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-gray-100 transition-colors shrink-0">
                   <LeagueBadge :name="h.league_name" size="md">
                     <template #fallback>
                       <Trophy class="w-5 h-5 text-slate-400" />
