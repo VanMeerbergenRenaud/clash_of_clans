@@ -189,6 +189,8 @@ const toggleSort = (column: any) => {
   }
 }
 
+const selectedLeagueClan = computed(() => leagueClans.value.find(c => c.clan_tag === selectedClanTag.value))
+
 const sortedParticipants = computed(() => {
   if (!leagueParticipants.value.length) return []
   const sorted = [...leagueParticipants.value]
@@ -311,7 +313,10 @@ onMounted(() => {
               <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
                 <div class="text-center md:text-left">
                   <div class="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-2">Ligue de Guerre - Saison {{ leagueGroup.season }}</div>
-                  <h2 class="text-3xl lg:text-4xl font-black">{{ selectedClan?.name }}</h2>
+                  <div class="flex items-center gap-4 justify-center md:justify-start">
+                    <LeagueBadge :name="leagueHistory[0]?.league_name" size="lg" />
+                    <h2 class="text-3xl lg:text-4xl font-black">{{ selectedClan?.name }}</h2>
+                  </div>
                   <div class="flex items-center gap-4 mt-4 justify-center md:justify-start">
                     <div class="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-tighter">
                       {{ leagueGroup.state === 'inWar' ? 'Combats en cours' : (leagueGroup.state === 'preparation' ? 'Préparation' : 'En attente') }}
@@ -354,9 +359,18 @@ onMounted(() => {
                    <tbody class="divide-y divide-slate-100">
                       <tr v-for="(c, idx) in leagueGroup.clans" :key="c.tag" :class="c.tag === selectedClanTag ? 'bg-slate-50' : ''">
                         <td class="px-6 py-4 font-bold text-slate-400">{{ Number(idx) + 1 }}</td>
-                        <td class="px-6 py-4 font-bold">
-                          <span :class="c.tag === selectedClanTag ? 'text-slate-900' : ''">{{ c.name }}</span>
-                          <span v-if="c.tag === selectedClanTag" class="text-[10px] bg-slate-100 text-slate-500 border border-slate-200 px-1.5 rounded ml-1 font-medium">MOI</span>
+                        <td class="px-6 py-4 flex items-center gap-3">
+                           <div class="w-8 h-8 shrink-0">
+                             <img v-if="c.badgeUrls?.small" :src="c.badgeUrls.small" :alt="c.name" class="w-full h-full object-contain" />
+                             <div v-else class="w-full h-full rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                               {{ c.name?.charAt(0) }}
+                             </div>
+                           </div>
+                           <div class="flex flex-col">
+                             <span class="font-bold shrink-0" :class="c.tag === selectedClanTag ? 'text-indigo-600' : 'text-slate-900'">{{ c.name }}</span>
+                             <span class="text-[10px] text-slate-400 font-mono">{{ c.tag }}</span>
+                           </div>
+                           <span v-if="c.tag === selectedClanTag" class="text-[9px] bg-indigo-50 text-indigo-500 border border-indigo-100 px-1.5 py-0.5 rounded ml-1 font-bold uppercase tracking-tighter">Moi</span>
                         </td>
                        <td class="px-6 py-4 text-center font-mono font-bold">--</td>
                        <td class="px-6 py-4 text-right font-mono">--%</td>
@@ -438,8 +452,12 @@ onMounted(() => {
             >
               <!-- Info Section -->
               <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors shrink-0">
-                  <Trophy class="w-5 h-5" />
+                <div class="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors shrink-0">
+                  <LeagueBadge :name="h.league_name" size="md">
+                    <template #fallback>
+                      <Trophy class="w-5 h-5 text-slate-400" />
+                    </template>
+                  </LeagueBadge>
                 </div>
                 
                 <div class="min-w-0">
@@ -453,7 +471,6 @@ onMounted(() => {
                      <div class="flex items-center gap-1">
                         <StarIcon class="w-3 h-3 text-amber-400 fill-amber-400" /> {{ h.total_stars }} stars
                      </div>
-                     <span class="w-1 h-1 rounded-full bg-slate-200"></span>
                      <div class="flex items-center gap-1 tabular-nums">
                         {{ h.total_destruction }}% damage
                      </div>
@@ -493,9 +510,16 @@ onMounted(() => {
              <!-- Modal Header Bar -->
              <div class="px-6 py-4 flex items-center justify-between border-b border-slate-100">
                 <div class="flex items-center gap-4">
-                   <span class="text-sm text-slate-500 px-2 py-0.5 bg-slate-100 rounded">
+                 <div class="flex items-center gap-3">
+                   <LeagueBadge :name="selectedLeagueHistory?.league_name" size="sm">
+                     <template #fallback>
+                       <Trophy class="w-4 h-4 text-slate-400" />
+                     </template>
+                   </LeagueBadge>
+                   <span class="text-sm font-bold text-slate-700">
                       {{ selectedLeagueHistory?.league_name }}
                    </span>
+                 </div>
                    <span class="text-sm text-slate-500 flex items-center gap-1.5">
                       <Calendar class="w-3.5 h-3.5" />
                       Saison {{ selectedLeagueHistory?.season }}
@@ -510,15 +534,16 @@ onMounted(() => {
              <div class="px-8 py-6 border-b border-slate-100">
                 <div class="flex items-center justify-between">
                    <!-- Our Clan -->
-                   <div class="flex items-center gap-4">
-                       <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                         <SwordsIcon class="w-5 h-5 text-slate-400" />
-                      </div>
-                      <div>
-                         <div class="font-bold text-slate-900">{{ selectedClan?.name }}</div>
-                         <div class="text-xs text-slate-400">{{ selectedClanTag }}</div>
-                      </div>
-                   </div>
+                    <div class="flex items-center gap-4">
+                       <div class="w-16 h-16 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border border-slate-100">
+                          <img v-if="selectedLeagueClan?.badge_url || selectedClan?.badge_url" :src="selectedLeagueClan?.badge_url || selectedClan?.badge_url" :alt="selectedClan?.name" class="w-full h-full object-contain p-2" />
+                          <span v-else class="text-2xl font-black text-slate-300">{{ selectedClan?.name?.charAt(0) }}</span>
+                       </div>
+                       <div>
+                          <div class="font-black text-slate-900 text-xl">{{ selectedClan?.name }}</div>
+                          <div class="text-xs font-mono text-slate-400">{{ selectedClanTag }}</div>
+                       </div>
+                    </div>
 
                    <!-- Stats Center -->
                   <div class="flex items-center gap-10">
@@ -615,11 +640,17 @@ onMounted(() => {
                                            : c.group_rank === 3 
                                               ? 'bg-orange-100 text-orange-600' 
                                               : 'bg-slate-100 text-slate-500'"
-                               >
-                                  {{ c.group_rank }}
-                               </div>
-                               
-                               <!-- Clan Info -->
+                                >
+                                   {{ c.group_rank }}
+                                </div>
+                                
+                                <!-- Clan Badge -->
+                                <div class="w-8 h-8 shrink-0 bg-white rounded-md flex items-center justify-center overflow-hidden border border-slate-100">
+                                   <img v-if="c.badge_url" :src="c.badge_url" :alt="c.clan_name" class="w-full h-full object-contain p-1" />
+                                   <span v-else class="text-[10px] font-bold text-slate-300">{{ c.clan_name?.charAt(0) }}</span>
+                                </div>
+                                
+                                <!-- Clan Info -->
                                <div class="flex-1 min-w-0">
                                   <div class="font-bold text-sm truncate" :class="c.clan_tag === selectedClanTag ? 'text-slate-900' : 'text-slate-800'">
                                      {{ c.clan_name }}

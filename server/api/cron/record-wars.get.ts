@@ -83,6 +83,8 @@ export default defineEventHandler(async (event) => {
                 opponent_name: war.opponent.name,
                 opponent_stars: war.opponent.stars,
                 opponent_destruction: war.opponent.destructionPercentage,
+                clan_badge_url: war.clan.badgeUrls?.medium,
+                opponent_badge_url: war.opponent.badgeUrls?.medium,
                 result: war.state === 'warEnded'
                     ? (war.clan.stars > war.opponent.stars
                         ? 'win'
@@ -126,6 +128,15 @@ export default defineEventHandler(async (event) => {
                     .upsert(participantsData, { onConflict: 'war_id, player_tag' })
 
                 if (partError) throw partError
+            }
+
+            // 5. Update Tracked Clan Badge
+            // Since we have the fresh badge URL here, let's keep tracked_clans in sync
+            if (war.clan.badgeUrls?.medium) {
+                await client
+                    .from('tracked_clans')
+                    .update({ badge_url: war.clan.badgeUrls.medium })
+                    .eq('tag', war.clan.tag)
             }
 
             // Count successful updates
