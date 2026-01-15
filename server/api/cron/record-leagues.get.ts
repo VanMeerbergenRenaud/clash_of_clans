@@ -42,7 +42,8 @@ export default defineEventHandler(async (event) => {
 
         try {
             // 2. Fetch CWL league group data
-            const leagueGroup: any = await $fetch(`https://api.clashofclans.com/v1/clans/${encodedTag}/currentwar/leaguegroup`, {
+            const baseUrl = config.cocApiBaseUrl
+            const leagueGroup: any = await $fetch(`${baseUrl}/clans/${encodedTag}/currentwar/leaguegroup`, {
                 headers: {
                     Authorization: `Bearer ${cocToken}`,
                     Accept: 'application/json'
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event) => {
             }
 
             // 3. Get clan's war league info
-            const clanInfo: any = await $fetch(`https://api.clashofclans.com/v1/clans/${encodedTag}`, {
+            const clanInfo: any = await $fetch(`${baseUrl}/clans/${encodedTag}`, {
                 headers: {
                     Authorization: `Bearer ${cocToken}`,
                     Accept: 'application/json'
@@ -114,7 +115,7 @@ export default defineEventHandler(async (event) => {
 
                     try {
                         const encodedWarTag = encodeURIComponent(warTag)
-                        const warData: any = await $fetch(`https://api.clashofclans.com/v1/clanwarleagues/wars/${encodedWarTag}`, {
+                        const warData: any = await $fetch(`${baseUrl}/clanwarleagues/wars/${encodedWarTag}`, {
                             headers: {
                                 Authorization: `Bearer ${cocToken}`,
                                 Accept: 'application/json'

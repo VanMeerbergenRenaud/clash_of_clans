@@ -53,7 +53,8 @@ export default defineEventHandler(async (event) => {
         try {
             // 2. Fetch current war data
             // We fetch directly from CoC API using the server token
-            const war: any = await $fetch(`https://api.clashofclans.com/v1/clans/${encodedTag}/currentwar`, {
+            const baseUrl = config.cocApiBaseUrl
+            const war: any = await $fetch(`${baseUrl}/clans/${encodedTag}/currentwar`, {
                 headers: {
                     Authorization: `Bearer ${cocToken}`,
                     Accept: 'application/json'
