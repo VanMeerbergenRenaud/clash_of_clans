@@ -7,7 +7,7 @@ const route = useRoute()
 // Simple breadcrumb logic based on route path
 const breadcrumbs = computed(() => {
   const path = route.path
-  if (path === '/') return ['Organisation', 'Tableau de bord']
+  if (path === '/') return ['Tableau de bord']
   
   const routeMap: Record<string, { category: string, name: string }> = {
     'leagues': { category: 'Organisation', name: 'Ligues de clan' },

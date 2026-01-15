@@ -26,9 +26,14 @@ const appName = "CoC Manager"
 // Grouped Navigation
 const navGroups = [
   {
-    title: 'Organisation',
+    title: '',
     items: [
       { name: 'Tableau de bord', path: '/', icon: Home },
+    ]
+  },
+  {
+    title: 'Organisation',
+    items: [
       { name: 'Ligues de clan', path: '/leagues', icon: Shield },
       { name: 'Guerres de clan', path: '/wars', icon: Swords },
     ]
@@ -98,7 +103,7 @@ const toggleUserMenu = (e: Event) => {
              :class="isExpanded ? 'opacity-100 w-auto ml-1' : 'opacity-0 w-0 -ml-2 pointer-events-none lg:hidden'"
           >
             <span class="font-semibold text-slate-900 leading-none tracking-tight">{{ appName }}</span>
-            <span class="text-xs text-slate-500 mt-1">Enterprise</span>
+            <span class="text-xs text-slate-500 mt-1">Créé par PaDaWaN</span>
           </div>
         </a>
       </div>
@@ -108,7 +113,7 @@ const toggleUserMenu = (e: Event) => {
         <div v-for="(group, idx) in navGroups" :key="idx">
           <h3 
             v-if="isExpanded && group.title"
-            class="px-2 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider transition-opacity duration-300"
+            class="px-2 mb-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider transition-opacity duration-300"
           >
             {{ group.title }}
           </h3>
