@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    const baseUrl = 'https://api.clashofclans.com/v1'
+    const baseUrl = config.cocApiBaseUrl
     const targetUrl = `${baseUrl}/${fixedSlug}`
 
     try {

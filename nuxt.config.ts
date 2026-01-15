@@ -11,6 +11,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     cocApiToken: process.env.COC_API_TOKEN,
+    cocApiBaseUrl: process.env.COC_API_BASE_URL || 'https://api.clashofclans.com/v1',
     public: {
       // Any public config
     }
