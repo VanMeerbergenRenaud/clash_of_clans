@@ -1,77 +1,79 @@
 <script setup lang="ts">
-import { Home, Shield, Swords, Map, Layers, Menu, X } from 'lucide-vue-next'
+import { PanelLeft } from 'lucide-vue-next'
 
-const isSidebarOpen = ref(false)
+const { isExpanded, toggleSidebar, toggleMobileSidebar } = useSidebar()
+const route = useRoute()
 
-const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
-}
-
-const links = [
-  { name: 'Tableau de bord', path: '/', icon: Home },
-  { name: 'Ligues (CWL)', path: '/leagues', icon: Shield },
-  { name: 'Guerres', path: '/wars', icon: Swords },
-  { name: 'Bases', path: '/bases', icon: Map },
-  { name: 'Stratégies', path: '/strategies', icon: Layers },
-]
+// Simple breadcrumb logic based on route path
+const breadcrumbs = computed(() => {
+  const path = route.path
+  if (path === '/') return ['Organisation', 'Tableau de bord']
+  
+  const routeMap: Record<string, { category: string, name: string }> = {
+    'leagues': { category: 'Organisation', name: 'Ligues de clan' },
+    'wars': { category: 'Organisation', name: 'Guerres de clan' },
+    'bases': { category: 'Communauté', name: 'Bases de défense' },
+    'strategies': { category: 'Communauté', name: "Stratégies d'attaque" }
+  }
+  
+  const segments = path.split('/').filter(Boolean)
+  const last = segments[segments.length - 1]
+  const info = routeMap[last]
+  
+  if (info) return [info.category, info.name]
+  
+  return ['Page', last || 'Inconnu'] 
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 transition-colors duration-300">
-    <!-- Mobile Header -->
-    <header class="lg:hidden flex items-center justify-between p-4 border-b border-slate-200 bg-white sticky top-0 z-20">
-      <div class="flex items-center gap-2 font-bold text-xl text-primary-600">
-        <span>CoC Manager</span>
-      </div>
-      <button @click="toggleSidebar" class="p-2 hover:bg-slate-100 rounded-lg">
-        <Menu v-if="!isSidebarOpen" class="w-6 h-6 text-slate-600" />
-        <X v-else class="w-6 h-6 text-slate-600" />
-      </button>
-    </header>
-
+  <div class="min-h-screen bg-white font-sans text-slate-900">
     <div class="flex">
-      <!-- Sidebar -->
-      <aside 
-        class="fixed lg:sticky top-0 left-0 z-30 w-64 h-screen bg-white border-r border-slate-200 transform transition-transform duration-300 lg:translate-x-0"
-        :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-      >        <div class="p-6">
-          <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-            CoC Manager
-          </h1>
-        </div>
+      <!-- Sidebar Component -->
+      <UiSidebar />
 
-        <nav class="mt-6 px-4 space-y-2">
-          <NuxtLink 
-            v-for="link in links" 
-            :key="link.path" 
-            :to="link.path"
-            class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
-            active-class="bg-indigo-50 text-indigo-600 font-medium"
-            @click="isSidebarOpen = false"
-          >
-            <component :is="link.icon" class="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span>{{ link.name }}</span>
-          </NuxtLink>
-        </nav>
-      </aside>
-
-      <!-- Overlay for mobile -->
+      <!-- Main Content Block -->
       <div 
-        v-if="isSidebarOpen" 
-        @click="isSidebarOpen = false"
-        class="fixed inset-0 bg-black/50 lg:hidden z-20 backdrop-blur-sm"
-      ></div>
+        class="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out"
+        :class="isExpanded ? 'lg:pl-0' : 'lg:pl-0'"
+      >
+        <!-- Header with Trigger and Breadcrumbs -->
+        <header class="h-16 flex items-center gap-4 px-4 lg:px-6 bg-white border-b border-slate-200 sticky top-0 z-30">
+          <button 
+            @click="toggleSidebar" 
+            class="hidden lg:flex items-center justify-center p-2 -ml-2 text-slate-500 hover:text-slate-900 rounded-md hover:bg-slate-100 transition-colors"
+          >
+            <PanelLeft class="w-5 h-5" />
+          </button>
+           <button 
+            @click="toggleMobileSidebar" 
+            class="lg:hidden flex items-center justify-center p-2 -ml-2 text-slate-500 hover:text-slate-900 rounded-md hover:bg-slate-100 transition-colors"
+          >
+            <PanelLeft class="w-5 h-5" />
+          </button>
+          
+          <div class="h-6 w-px bg-slate-200 mx-1 hidden lg:block"></div>
 
-      <!-- Main Content -->
-      <main class="flex-1 p-4 lg:p-8 w-full max-w-7xl mx-auto">
-        <slot />
-      </main>
+          <!-- Breadcrumbs -->
+          <nav class="flex items-center gap-2 text-sm text-slate-500">
+             <template v-for="(item, index) in breadcrumbs" :key="index">
+                <span :class="index === breadcrumbs.length - 1 ? 'text-slate-900 font-medium' : ''">
+                  {{ item }}
+                </span>
+                <span v-if="index < breadcrumbs.length - 1" class="text-slate-400">/</span>
+             </template>
+          </nav>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 p-4 lg:p-8 w-full max-w-[1920px] mx-auto overflow-x-hidden bg-white">
+          <slot />
+        </main>
+      </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.router-link-active {
-  @apply bg-indigo-50 text-indigo-600;
-}
+<style>
+/* Global styles if needed, otherwise scoped */
 </style>
