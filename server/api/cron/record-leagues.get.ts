@@ -24,10 +24,18 @@ export default defineEventHandler(async (event) => {
     }
 
     if (!clans || clans.length === 0) {
+        // Log skipped
+        await client.from('cron_logs').insert({
+            task_name: 'record-leagues',
+            status: 'skipped',
+            message: 'Aucun clan suivi.',
+            items_count: 0
+        })
         return { message: 'Aucun clan suivi.' }
     }
 
     const results = []
+    let updatedCount = 0
 
     for (const clan of clans) {
         const encodedTag = encodeURIComponent(clan.tag)
@@ -193,11 +201,24 @@ export default defineEventHandler(async (event) => {
                 participants: participantsData.length
             })
 
+            // Count successful updates
+            if (savedLeague) updatedCount++
+
         } catch (e: any) {
             console.error(`Error processing clan ${clan.tag}:`, e)
             results.push({ tag: clan.tag, error: e.message || 'Unknown error' })
         }
     }
+
+
+
+    // Log final result
+    await client.from('cron_logs').insert({
+        task_name: 'record-leagues',
+        status: 'success',
+        message: `Processed ${clans.length} clans. Updated ${updatedCount} league seasons.`,
+        items_count: updatedCount
+    })
 
     return {
         success: true,

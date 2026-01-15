@@ -24,10 +24,18 @@ export default defineEventHandler(async (event) => {
     }
 
     if (!clans || clans.length === 0) {
+        // Log skipped
+        await client.from('cron_logs').insert({
+            task_name: 'record-wars',
+            status: 'skipped',
+            message: 'Aucun clan suivi.',
+            items_count: 0
+        })
         return { message: 'Aucun clan suivi.' }
     }
 
     const results = []
+    let updatedCount = 0
 
     // Helper to parse CoC Dates (YYYYMMDDTHHHmmss.000Z) to ISO
     const parseCocDate = (dateStr: string) => {
@@ -75,6 +83,8 @@ export default defineEventHandler(async (event) => {
                 opponent_name: war.opponent.name,
                 opponent_stars: war.opponent.stars,
                 opponent_destruction: war.opponent.destructionPercentage,
+                clan_badge_url: war.clan.badgeUrls?.medium,
+                opponent_badge_url: war.opponent.badgeUrls?.medium,
                 result: war.state === 'warEnded'
                     ? (war.clan.stars > war.opponent.stars
                         ? 'win'
@@ -120,6 +130,17 @@ export default defineEventHandler(async (event) => {
                 if (partError) throw partError
             }
 
+            // 5. Update Tracked Clan Badge
+            // Since we have the fresh badge URL here, let's keep tracked_clans in sync
+            if (war.clan.badgeUrls?.medium) {
+                await client
+                    .from('tracked_clans')
+                    .update({ badge_url: war.clan.badgeUrls.medium })
+                    .eq('tag', war.clan.tag)
+            }
+
+            // Count successful updates
+            if (savedWar) updatedCount++
             results.push({ tag: clan.tag, status: 'success', warId: savedWar.id })
 
         } catch (e: any) {
@@ -127,6 +148,16 @@ export default defineEventHandler(async (event) => {
             results.push({ tag: clan.tag, error: e.message || 'Unknown error' })
         }
     }
+
+
+
+    // Log final result
+    await client.from('cron_logs').insert({
+        task_name: 'record-wars',
+        status: 'success',
+        message: `Processed ${clans.length} clans. Updated ${updatedCount} wars.`,
+        items_count: updatedCount
+    })
 
     return {
         success: true,

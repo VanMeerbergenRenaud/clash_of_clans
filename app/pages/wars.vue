@@ -402,64 +402,160 @@ onMounted(() => {
 
          <div v-else class="space-y-6">
             
-            <!-- War Header (Clean, Modal-style) -->
-            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-               <!-- Top Bar -->
-               <div class="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                  <div class="flex items-center  gap-1.5 text-xs text-slate-400">
-                      <Calendar class="w-3.5 h-3.5" />
-                      <span class="font-medium">Fin à {{ new Date(currentWar.endTime.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
-                  </div>
+            <!-- War Header (Harmonious & Colored - Updated) -->
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+                <!-- Top Status Bar (Subtle Gradient Background) -->
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50/30 to-white">
+                    <!-- Status & Size -->
+                    <div class="flex items-center gap-3">
+                         <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border"
+                              :class="currentWar.state === 'inWar' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-600'">
+                              <span class="relative flex h-2 w-2">
+                                <span v-if="currentWar.state === 'inWar'" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2" :class="currentWar.state === 'inWar' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                              </span>
+                              {{ currentWar.state === 'inWar' ? 'En cours' : 'Préparation' }}
+                         </div>
+                         <div class="hidden sm:flex text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-full">
+                            {{ currentWar.teamSize }} vs {{ currentWar.teamSize }}
+                         </div>
+                    </div>
+                    <!-- Timer -->
+                    <div class="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                         <Calendar class="w-3.5 h-3.5 opacity-75" />
+                         <span>Fin à {{ new Date(currentWar.endTime.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
+                    </div>
+                </div>
 
-                  <div 
-                    class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded" 
-                    :class="currentWar.state === 'inWar' ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50'"
-                  >
-                       {{ currentWar.state === 'inWar' ? 'En cours' : 'Préparation' }}
-                  </div>
-                  <div class="flex items-center gap-1.5 text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-500">
-                    <Users class="w-3 h-3" />
-                    <span class="font-bold">{{ currentWar.teamSize }}v{{ currentWar.teamSize }}</span>
-                  </div>
-               </div>
-               
-               <!-- Clans Display -->
-               <div class="px-8 py-6">
-                  <div class="flex items-center justify-between">
-                     <!-- Our Clan -->
-                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-black text-slate-600 shrink-0">
-                          {{ currentWar.clan.name?.charAt(0).toUpperCase() }}
+                <!-- Matchup Content -->
+                <div class="p-6 md:p-10">
+                    <div class="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+                        
+                        <!-- Home Clan (Indigo Theme) -->
+                        <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-5 w-full">
+                            <div class="flex items-center gap-5 w-full justify-center md:justify-start">
+                                <!-- Logo with centered bottom level -->
+                                <div class="relative shrink-0">
+                                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 flex items-center justify-center overflow-hidden">
+                                        <img 
+                                          v-if="currentWar.clan.badgeUrls?.medium" 
+                                          :src="currentWar.clan.badgeUrls.medium" 
+                                          :alt="currentWar.clan.name" 
+                                          class="w-full h-full object-contain p-2" 
+                                        />
+                                        <span v-else class="text-3xl font-black text-indigo-600">
+                                            {{ currentWar.clan.name?.charAt(0).toUpperCase() }}
+                                        </span>
+                                    </div>
+                                    <div v-if="currentWar.clan.clanLevel" class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border-2 border-white whitespace-nowrap z-10">
+                                         Niveau {{ currentWar.clan.clanLevel }}
+                                    </div>
+                                </div>
+                                
+                                <div class="min-w-0 flex-1 hidden md:block">
+                                    <h3 class="text-2xl font-bold text-slate-900 truncate">{{ currentWar.clan.name }}</h3>
+                                    <div class="flex items-center gap-2 mt-1">
+                                       <span class="inline-block w-2 h-2 rounded-full bg-indigo-500"></span>
+                                       <span class="text-xs font-semibold text-indigo-900/60 uppercase tracking-wide">Notre Clan</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Mobile Name -->
+                            <h3 class="text-xl font-bold text-slate-900 truncate md:hidden mt-2">{{ currentWar.clan.name }}</h3>
+                            
+                            <!-- Detailed Stats -->
+                            <div class="w-full space-y-2 mt-1">
+                                <div class="flex justify-between items-end">
+                                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Destruction</span>
+                                    <span class="text-xl font-black text-indigo-600">{{ currentWar.clan.destructionPercentage.toFixed(1) }}%</span>
+                                </div>
+                                <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-[2px]">
+                                    <div class="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full" :style="{ width: `${currentWar.clan.destructionPercentage}%` }"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                           <div class="font-bold text-slate-900">{{ currentWar.clan.name }}</div>
-                           <div class="flex items-center gap-2 mt-1">
-                             <span class="text-lg font-extrabold text-slate-900">{{ currentWar.clan.stars }}<span class="text-amber-400 text-sm">★</span></span>
-                             <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{{ currentWar.clan.destructionPercentage.toFixed(1) }}%</span>
-                           </div>
-                        </div>
-                     </div>
 
-                     <!-- VS -->
-                     <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                        <SwordsIcon class="w-4 h-4 text-slate-400" />
-                     </div>
+                        <!-- VS / Score Center -->
+                        <div class="shrink-0 flex flex-col items-center gap-4 px-4 py-2">
+                            <div class="flex items-center gap-8 md:gap-10">
+                                <div class="text-center">
+                                   <span class="block text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-none">{{ currentWar.clan.stars }}</span>
+                                   <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1 block">Étoiles</span>
+                                </div>
+                                
+                                <div class="h-16 w-px bg-slate-200 rotate-12 mx-2"></div>
+                                
+                                <div class="text-center">
+                                   <span class="block text-5xl md:text-6xl font-black text-slate-400 tracking-tighter leading-none">{{ currentWar.opponent.stars }}</span>
+                                   <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">Étoiles</span>
+                                </div>
+                            </div>
+                        </div>
 
-                     <!-- Opponent -->
-                     <div class="flex items-center gap-4 flex-row-reverse text-right">
-                        <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-black text-slate-500 shrink-0 opacity-75">
-                          {{ currentWar.opponent.name?.charAt(0).toUpperCase() }}
+                        <!-- Opponent Clan (Warm Gray Theme) -->
+                        <div class="flex-1 flex flex-col items-center md:items-end text-center md:text-right gap-5 w-full">
+                            <div class="flex items-center flex-row-reverse gap-5 w-full justify-center md:justify-start">
+                                <!-- Logo with centered bottom level -->
+                                <div class="relative shrink-0">
+                                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-50 to-orange-50 border border-slate-200 flex items-center justify-center overflow-hidden">
+                                        <img 
+                                          v-if="currentWar.opponent.badgeUrls?.medium" 
+                                          :src="currentWar.opponent.badgeUrls.medium" 
+                                          :alt="currentWar.opponent.name" 
+                                          class="w-full h-full object-contain p-2" 
+                                        />
+                                        <span v-else class="text-3xl font-black text-slate-500">
+                                            {{ currentWar.opponent.name?.charAt(0).toUpperCase() }}
+                                        </span>
+                                    </div>
+                                    <div v-if="currentWar.opponent.clanLevel" class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border-2 border-white whitespace-nowrap z-10">
+                                         Niveau {{ currentWar.opponent.clanLevel }}
+                                    </div>
+                                </div>
+                                
+                                <div class="min-w-0 flex-1 hidden md:block">
+                                    <h3 class="text-2xl font-bold text-slate-700 truncate">{{ currentWar.opponent.name }}</h3>
+                                    <div class="flex items-center justify-end gap-2 mt-1">
+                                       <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Adversaire</span>
+                                       <span class="inline-block w-2 h-2 rounded-full bg-slate-400"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Mobile Name -->
+                            <h3 class="text-xl font-bold text-slate-700 truncate md:hidden mt-2">{{ currentWar.opponent.name }}</h3>
+
+                            <!-- Detailed Stats -->
+                            <div class="w-full space-y-2 mt-1">
+                                <div class="flex justify-between items-end flex-row-reverse">
+                                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Destruction</span>
+                                    <span class="text-xl font-black text-slate-600">{{ currentWar.opponent.destructionPercentage.toFixed(1) }}%</span>
+                                </div>
+                                <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-[2px] flex justify-end">
+                                    <div class="h-full bg-gradient-to-l from-slate-400 to-slate-500 rounded-full" :style="{ width: `${currentWar.opponent.destructionPercentage}%` }"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                           <div class="font-bold text-slate-600">{{ currentWar.opponent.name }}</div>
-                           <div class="flex items-center gap-2 mt-1 justify-end">
-                             <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{{ currentWar.opponent.destructionPercentage.toFixed(1) }}%</span>
-                             <span class="text-lg font-extrabold text-slate-500">{{ currentWar.opponent.stars }}<span class="text-amber-400/50 text-sm">★</span></span>
-                           </div>
-                        </div>
+
+                    </div>
+                </div>
+                
+                <!-- Footer Result -->
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-center">
+                     <div v-if="currentWar.clan.stars > currentWar.opponent.stars" class="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-100/50 px-4 py-1.5 rounded-full border border-emerald-200/50">
+                        <Trophy class="w-4 h-4" />
+                        <span>Victoire en cours (+{{ currentWar.clan.stars - currentWar.opponent.stars }})</span>
                      </div>
-                  </div>
-               </div>
+                     <div v-else-if="currentWar.clan.stars < currentWar.opponent.stars" class="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100/50 px-4 py-1.5 rounded-full border border-amber-200/50">
+                        <AlertCircle class="w-4 h-4" />
+                        <span>Retard de {{ currentWar.opponent.stars - currentWar.clan.stars }} étoiles</span>
+                     </div>
+                     <div v-else class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 bg-white px-4 py-1.5 rounded-full border border-slate-200">
+                        <SwordsIcon class="w-4 h-4" />
+                        <span>Égalité parfaite</span>
+                     </div>
+                </div>
             </div>
 
             <!-- Stats Cards (2x2 Grid like leagues modal) -->
@@ -730,8 +826,9 @@ onMounted(() => {
                     
                     <!-- Our Clan (Left) -->
                     <div class="flex items-center gap-4">
-                       <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-2xl font-black text-slate-600 shrink-0">
-                          {{ war.clan_name?.charAt(0).toUpperCase() }}
+                       <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                          <img v-if="war.clan_badge_url || selectedClan?.badge_url" :src="war.clan_badge_url || selectedClan?.badge_url" :alt="war.clan_name" class="w-full h-full object-contain p-2" />
+                          <span v-else class="text-2xl font-black text-slate-600">{{ war.clan_name?.charAt(0).toUpperCase() }}</span>
                        </div>
                        <div class="min-w-0 flex-1">
                           <div class="font-bold text-slate-900 text-base truncate">{{ war.clan_name }}</div>
@@ -763,8 +860,9 @@ onMounted(() => {
                     
                     <!-- Opponent Clan (Right) -->
                     <div class="flex items-center gap-4 md:flex-row-reverse md:text-right">
-                       <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-2xl font-black text-slate-500 shrink-0 opacity-75">
-                          {{ war.opponent_name?.charAt(0).toUpperCase() }}
+                       <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden shrink-0 opacity-75">
+                          <img v-if="war.opponent_badge_url" :src="war.opponent_badge_url" :alt="war.opponent_name" class="w-full h-full object-contain p-2" />
+                          <span v-else class="text-2xl font-black text-slate-500">{{ war.opponent_name?.charAt(0).toUpperCase() }}</span>
                        </div>
                        <div class="min-w-0 flex-1">
                           <div class="font-bold text-slate-600 text-base truncate">{{ war.opponent_name }}</div>
@@ -846,8 +944,9 @@ onMounted(() => {
                     
                     <!-- Our Clan (Left) -->
                     <div class="flex items-center gap-4">
-                      <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-2xl font-black text-slate-600 shrink-0">
-                        {{ selectedWarHistory?.clan_name?.charAt(0).toUpperCase() }}
+                      <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                        <img v-if="selectedWarHistory?.clan_badge_url || selectedClan?.badge_url" :src="selectedWarHistory?.clan_badge_url || selectedClan?.badge_url" :alt="selectedWarHistory.clan_name" class="w-full h-full object-contain p-2" />
+                        <span v-else class="text-2xl font-black text-slate-600">{{ selectedWarHistory?.clan_name?.charAt(0).toUpperCase() }}</span>
                       </div>
                       <div class="min-w-0 flex-1">
                         <div class="font-bold text-slate-900 text-base truncate">{{ selectedWarHistory?.clan_name }}</div>
@@ -879,8 +978,9 @@ onMounted(() => {
                     
                     <!-- Opponent Clan (Right) -->
                     <div class="flex items-center gap-4 md:flex-row-reverse md:text-right">
-                      <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-2xl font-black text-slate-500 shrink-0 opacity-75">
-                        {{ selectedWarHistory?.opponent_name?.charAt(0).toUpperCase() }}
+                      <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden shrink-0 opacity-75">
+                        <img v-if="selectedWarHistory?.opponent_badge_url" :src="selectedWarHistory.opponent_badge_url" :alt="selectedWarHistory.opponent_name" class="w-full h-full object-contain p-2" />
+                        <span v-else class="text-2xl font-black text-slate-500">{{ selectedWarHistory?.opponent_name?.charAt(0).toUpperCase() }}</span>
                       </div>
                       <div class="min-w-0 flex-1">
                         <div class="font-bold text-slate-600 text-base truncate">{{ selectedWarHistory?.opponent_name }}</div>

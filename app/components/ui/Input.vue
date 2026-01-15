@@ -25,7 +25,7 @@ defineEmits(['update:modelValue'])
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         :type="type || 'text'"
         :placeholder="placeholder"
-        class="block w-full rounded-xl border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5 transition-colors"
+        class="block w-full rounded-xl border border-slate-200 bg-white text-slate-900 focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 sm:text-sm px-4 py-2.5 transition-all outline-none"
         :class="{ 
           'pl-10': icon,
           'border-red-300 focus:border-red-500 focus:ring-red-500': error

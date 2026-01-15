@@ -46,6 +46,8 @@ export default defineEventHandler(async (event) => {
         opponent_name: 'Die Ysters',
         opponent_stars: 76,
         opponent_destruction: 94.0,
+        clan_badge_url: 'https://api-assets.clashofclans.com/badges/200/ISyB5wAm2v7B_rm-LJS360ga-83IFL8MABcjxft1RkA.png',
+        opponent_badge_url: 'https://api-assets.clashofclans.com/badges/200/5TuBZjMO479ySwCTYdYFBKGxrGH1gJESY6gWLl0MYDs.png', // L2Y8CUP badge
         result: 'win'
     }
 

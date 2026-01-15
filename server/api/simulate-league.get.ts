@@ -54,14 +54,14 @@ export default defineEventHandler(async (event) => {
 
         // 4. Insert the 8 clans in the group (including our clan)
         const groupClans = [
-            { tag: myClan.tag, name: myClan.name, level: 24, rank: 2, stars: 156, dest: 678.5 },
-            { tag: '#WINNER01', name: 'Les Champions', level: 25, rank: 1, stars: 165, dest: 712.3 },
-            { tag: '#THIRD001', name: 'Clash Dynasty', level: 23, rank: 3, stars: 148, dest: 645.2 },
-            { tag: '#FOURTH01', name: 'War Machine', level: 22, rank: 4, stars: 142, dest: 621.8 },
-            { tag: '#FIFTH001', name: 'Elite Warriors', level: 21, rank: 5, stars: 135, dest: 598.4 },
-            { tag: '#SIXTH001', name: 'Night Raiders', level: 20, rank: 6, stars: 128, dest: 567.1 },
-            { tag: '#SEVENTH1', name: 'Storm Chasers', level: 19, rank: 7, stars: 118, dest: 534.6 },
-            { tag: '#EIGHTH01', name: 'Iron Lords', level: 18, rank: 8, stars: 105, dest: 489.2 },
+            { tag: myClan.tag, name: myClan.name, level: 24, rank: 2, stars: 156, dest: 678.5, badge: 'https://api-assets.clashofclans.com/badges/200/ISyB5wAm2v7B_rm-LJS360ga-83IFL8MABcjxft1RkA.png' },
+            { tag: '#WINNER01', name: 'Les Champions', level: 25, rank: 1, stars: 165, dest: 712.3, badge: 'https://api-assets.clashofclans.com/badges/200/5TuBZjMO479ySwCTYdYFBKGxrGH1gJESY6gWLl0MYDs.png' },
+            { tag: '#THIRD001', name: 'Clash Dynasty', level: 23, rank: 3, stars: 148, dest: 645.2, badge: 'https://api-assets.clashofclans.com/badges/200/tWA-u6CK_97Q4sFhL8NAu7MlzhICO5xPqwCYoB6vm2Y.png' },
+            { tag: '#FOURTH01', name: 'War Machine', level: 22, rank: 4, stars: 142, dest: 621.8, badge: 'https://api-assets.clashofclans.com/badges/200/PZkPot-lujNnctM-lfgj8tGYpwVZnHnxRktwWBXc_XM.png' },
+            { tag: '#FIFTH001', name: 'Elite Warriors', level: 21, rank: 5, stars: 135, dest: 598.4, badge: 'https://api-assets.clashofclans.com/badges/200/3BWqO9RC8jmB0V3kgQaqv5_l3fNM-X6aFVC5eqLfiSk.png' },
+            { tag: '#SIXTH001', name: 'Night Raiders', level: 20, rank: 6, stars: 128, dest: 567.1, badge: 'https://api-assets.clashofclans.com/badges/200/5TuBZjMO479ySwCTYdYFBKGxrGH1gJESY6gWLl0MYDs.png' },
+            { tag: '#SEVENTH1', name: 'Storm Chasers', level: 19, rank: 7, stars: 118, dest: 534.6, badge: 'https://api-assets.clashofclans.com/badges/200/tWA-u6CK_97Q4sFhL8NAu7MlzhICO5xPqwCYoB6vm2Y.png' },
+            { tag: '#EIGHTH01', name: 'Iron Lords', level: 18, rank: 8, stars: 105, dest: 489.2, badge: 'https://api-assets.clashofclans.com/badges/200/PZkPot-lujNnctM-lfgj8tGYpwVZnHnxRktwWBXc_XM.png' },
         ]
 
         const clansData = groupClans.map(c => ({
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
             clan_tag: c.tag,
             clan_name: c.name,
             clan_level: c.level,
-            badge_url: null,
+            badge_url: c.badge,
             group_rank: c.rank,
             total_stars: c.stars,
             total_destruction: c.dest
