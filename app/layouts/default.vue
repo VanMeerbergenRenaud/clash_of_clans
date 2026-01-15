@@ -8,7 +8,7 @@ const toggleSidebar = () => {
 }
 
 const links = [
-  { name: 'Dashboard', path: '/', icon: Home },
+  { name: 'Tableau de bord', path: '/', icon: Home },
   { name: 'Ligues (CWL)', path: '/leagues', icon: Shield },
   { name: 'Guerres', path: '/wars', icon: Swords },
   { name: 'Bases', path: '/bases', icon: Map },
