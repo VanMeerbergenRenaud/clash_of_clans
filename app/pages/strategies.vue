@@ -3,7 +3,7 @@ import { Layers, Sword, Wind, ExternalLink, Plus, Loader2, Trash2, ChevronDown, 
 import UiButton from '~/components/ui/Button.vue'
 import UiInput from '~/components/ui/Input.vue'
 import UiAlert from '~/components/ui/Alert.vue'
-import UiSidebar from '~/components/ui/Sidebar.vue'
+import AppSidebar from '~/components/ui/Sidebar.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import UiImageUpload from '~/components/ui/ImageUpload.vue'
 import UiGridCard from '~/components/ui/GridCard.vue'
@@ -287,7 +287,7 @@ const filteredStrats = computed(() => {
 
 
     <!-- Sidebar Form -->
-    <UiSidebar :show="showSidebar" :title="editingStratId ? 'Modifier la stratégie' : 'Ajouter une stratégie'" @close="closeSidebar">
+    <AppSidebar :show="showSidebar" :title="editingStratId ? 'Modifier la stratégie' : 'Ajouter une stratégie'" @close="closeSidebar">
       <form id="add-strat-form" @submit.prevent="handleAddStrategy" class="space-y-5">
         <UiInput v-model="newStrat.title" label="Nom de la compo" placeholder="ex: Queen Walk Hybrid" required />
         
@@ -318,6 +318,6 @@ const filteredStrats = computed(() => {
            </UiButton>
         </div>
       </template>
-    </UiSidebar>
+    </AppSidebar>
   </div>
 </template>

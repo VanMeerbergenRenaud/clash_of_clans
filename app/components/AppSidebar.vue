@@ -93,7 +93,12 @@ const toggleUserMenu = (e: Event) => {
     >
       <!-- App Header / Logo -->
       <div class="h-16 flex items-center px-4 border-b border-slate-200/50">
-        <a href="/" class="flex items-center gap-2 p-2 w-full hover:bg-slate-100 rounded-lg transition-colors">
+        <a href="/" 
+           class="flex items-center gap-2 w-full hover:bg-slate-100 rounded-lg transition-colors"
+           :class="[
+             isExpanded ? 'p-2' : 'p-1',
+           ]"
+        >
           <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600 text-white shrink-0 shadow-sm shadow-indigo-200">
              <!-- Placeholder Logo Icon -->
              <span class="font-bold text-lg">C</span>

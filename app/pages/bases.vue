@@ -3,7 +3,7 @@ import { Map, Copy, ExternalLink, Plus, Loader2, Home, ChevronDown, Trash2 } fro
 import UiButton from '~/components/ui/Button.vue'
 import UiInput from '~/components/ui/Input.vue'
 import UiAlert from '~/components/ui/Alert.vue'
-import UiSidebar from '~/components/ui/Sidebar.vue'
+import AppSidebar from '~/components/ui/Sidebar.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import UiImageUpload from '~/components/ui/ImageUpload.vue'
 import UiGridCard from '~/components/ui/GridCard.vue'
@@ -254,7 +254,7 @@ const filteredBases = computed(() => {
 
 
     <!-- Sidebar Form -->
-    <UiSidebar :show="showSidebar" title="Ajouter une base" @close="closeSidebar">
+    <AppSidebar :show="showSidebar" title="Ajouter une base" @close="closeSidebar">
       <form id="add-base-form" @submit.prevent="handleAddBase" class="space-y-5">
         <UiInput v-model="newBase.title" label="Nom de la base" placeholder="ex: Base Anti-3 Guerre" required />
         
@@ -274,6 +274,6 @@ const filteredBases = computed(() => {
            <UiButton type="submit" form="add-base-form" variant="primary" :loading="isAdding">Confirmer</UiButton>
         </div>
       </template>
-    </UiSidebar>
+    </AppSidebar>
   </div>
 </template>
