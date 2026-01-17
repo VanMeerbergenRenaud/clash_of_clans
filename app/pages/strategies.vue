@@ -8,6 +8,7 @@ import UiSelect from '~/components/ui/Select.vue'
 import UiImageUpload from '~/components/ui/ImageUpload.vue'
 import UiGridCard from '~/components/ui/GridCard.vue'
 import UiImageModal from '~/components/ui/ImageModal.vue'
+import UiTextarea from '~/components/ui/Textarea.vue'
 
 definePageMeta({ layout: 'default' })
 
@@ -46,6 +47,7 @@ const newStrat = ref({
   video_url: '',
   image_url: ''
 })
+const errors = ref<Record<string, string>>({})
 
 const types = [
   { id: 'Tout', icon: Layers, label: 'Tout' },
@@ -92,7 +94,14 @@ onMounted(async () => {
 })
 
 const handleAddStrategy = async () => {
-  if (!newStrat.value.title) return
+  errors.value = {}
+  
+  if (!newStrat.value.title) errors.value.title = 'Le nom est obligatoire'
+  if (!newStrat.value.description) errors.value.description = 'La description est obligatoire'
+  if (!newStrat.value.army_link) errors.value.army_link = 'Le lien de l\'armée est obligatoire'
+  if (!imageFile.value && !newStrat.value.image_url) errors.value.image = 'L\'image est obligatoire'
+  
+  if (Object.keys(errors.value).length > 0) return
   
   isAdding.value = true
   try {
@@ -146,6 +155,7 @@ const closeSidebar = () => {
   showSidebar.value = false
   editingStratId.value = null
   newStrat.value = { title: '', description: '', type: 'ground', min_town_hall: 16, army_link: '', video_url: '', image_url: '' }
+  errors.value = {}
   imageFile.value = null
   imagePreview.value = null
 }
@@ -292,27 +302,25 @@ const filteredStrats = computed(() => {
     <!-- Sidebar Form -->
     <AppSidebar :show="showSidebar" :title="editingStratId ? 'Modifier la stratégie' : 'Ajouter une stratégie'" @close="closeSidebar">
       <form id="add-strat-form" @submit.prevent="handleAddStrategy" class="space-y-5">
-        <UiInput v-model="newStrat.title" label="Nom de la compo" placeholder="ex: Queen Walk Hybrid" required />
+        <UiInput v-model="newStrat.title" label="Nom de la compo" placeholder="ex: Queen Walk Hybrid" :error="errors.title" />
         
-        <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest">Description</label>
-          <textarea 
-            v-model="newStrat.description" 
-            class="w-full rounded-2xl border border-slate-200 bg-white text-slate-900 px-4 py-3 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
-            placeholder="Détails de l'attaque..."
-          ></textarea>
-        </div>
+        <UiTextarea 
+          v-model="newStrat.description" 
+          label="Description" 
+          placeholder="Détails de l'attaque..." 
+          :error="errors.description" 
+        />
 
         <div class="grid grid-cols-2 gap-4">
           <UiSelect v-model="newStrat.type" label="Type" :options="[{label: 'Sol', value: 'ground'}, {label: 'Aérien', value: 'air'}]" />
           <UiSelect v-model="newStrat.min_town_hall" label="HDV Minimum" :options="[18, 17, 16]" />
         </div>
 
-        <UiInput v-model="newStrat.army_link" label="Lien de l'armée Clash Of Clans" placeholder="https://link.clashofclans.com/..." />
+        <UiInput v-model="newStrat.army_link" label="Lien de l'armée Clash Of Clans" placeholder="https://link.clashofclans.com/..." :error="errors.army_link" />
         
         <UiInput v-model="newStrat.video_url" label="Lien de la vidéo tuto sur YouTube" placeholder="https://www.youtube.com/watch?v=..." />
         
-        <UiImageUpload v-model="imageFile" :preview="imagePreview" @update:preview="imagePreview = $event" />
+        <UiImageUpload v-model="imageFile" :preview="imagePreview" @update:preview="imagePreview = $event" :error="errors.image" />
       </form>
 
       <template #footer>
