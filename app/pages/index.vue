@@ -2,6 +2,8 @@
 import { Shield, Swords, Users, TrendingUp, Activity, ArrowRight, Star } from 'lucide-vue-next'
 import UiButton from '~/components/ui/Button.vue'
 import DashboardWarPlanner from '~/components/dashboard/WarPlanner.vue'
+import StatsLeaderboard from '~/components/dashboard/StatsLeaderboard.vue'
+import { useLeaderboardStats } from '~/composables/useLeaderboardStats'
 
 definePageMeta({
   layout: 'default'
@@ -12,6 +14,10 @@ const clansInfo = ref<any[]>([])
 // We need a list of ALL members combined from all tracked clans
 const planningMembers = ref<any[]>([])
 const loading = ref(true)
+
+// -- Leaderboard Stats --
+const warStats = useLeaderboardStats('war')
+const leagueStats = useLeaderboardStats('league')
 
 // -- Data Fetching --
 const fetchData = async () => {
@@ -167,6 +173,9 @@ const fetchSystemStatus = async () => {
 onMounted(() => {
   fetchData()
   fetchSystemStatus()
+  // Initialize leaderboard stats
+  warStats.init()
+  leagueStats.init()
 })
 
 </script>
@@ -174,12 +183,37 @@ onMounted(() => {
 <template>
   <div class="space-y-8 pb-12">
     
+    <!-- Statistics Leaderboards -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <StatsLeaderboard
+        type="war"
+        title="Stats Guerres"
+        :perfect-leaderboard="warStats.perfectLeaderboard.value"
+        :one-star-leaderboard="warStats.oneStarLeaderboard.value"
+        :filters="warStats.filters.value"
+        :clans="warStats.clans.value"
+        :loading="warStats.loading.value"
+        @update:filters="warStats.filters.value = $event"
+      />
+      
+      <StatsLeaderboard
+        type="league"
+        title="Stats Ligues"
+        :perfect-leaderboard="leagueStats.perfectLeaderboard.value"
+        :one-star-leaderboard="leagueStats.oneStarLeaderboard.value"
+        :filters="leagueStats.filters.value"
+        :clans="leagueStats.clans.value"
+        :loading="leagueStats.loading.value"
+        @update:filters="leagueStats.filters.value = $event"
+      />
+    </section>
+    
     <!-- War Planning / Organization Widget -->
     <section>
        <DashboardWarPlanner :initialmembers="planningMembers" v-if="!loading" />
        
        <div v-else class="h-[600px] bg-slate-50 rounded-2xl animate-pulse flex items-center justify-center text-slate-400">
-         Chargement des membres...
+         Chargement des statistiques...
        </div>
     </section>
 
