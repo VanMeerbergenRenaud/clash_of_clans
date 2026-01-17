@@ -1,6 +1,9 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+    // Note: This endpoint is public but the URL is obscure.
+    // Only writes to DB when wars are ending, so abuse risk is minimal.
+
     // Use Service Role to bypass RLS for administrative/cron tasks
     const client = serverSupabaseServiceRole(event)
     const config = useRuntimeConfig()
@@ -67,10 +70,23 @@ export default defineEventHandler(async (event) => {
                 continue
             }
 
-            // Check if we should record (e.g. war is ending soon or ended)
-            // User said "1 minute before end". 
-            // We'll allow recording at any time, using UPSERT to update stats as they evolve.
-            // This allows the cron to run e.g. every 10 mins and capture the latest state.
+            // Only record wars that are ending soon (within 15 minutes) or have already ended
+            // This prevents unnecessary DB writes for wars still in progress
+            const endTimeStr = parseCocDate(war.endTime)
+            if (endTimeStr && war.state !== 'warEnded') {
+                const endTime = new Date(endTimeStr).getTime()
+                const now = Date.now()
+                const minutesUntilEnd = (endTime - now) / (1000 * 60)
+
+                // Skip if war ends in more than 15 minutes
+                if (minutesUntilEnd > 15) {
+                    results.push({
+                        tag: clan.tag,
+                        status: 'skipped (war ends in ' + Math.round(minutesUntilEnd) + ' mins)'
+                    })
+                    continue
+                }
+            }
 
             const warData = {
                 team_size: war.teamSize,
