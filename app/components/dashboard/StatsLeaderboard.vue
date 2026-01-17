@@ -49,7 +49,7 @@ const getRankClass = (rank: number) => {
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+  <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
     <!-- Header -->
     <div class="p-4 border-b border-slate-100 bg-slate-50">
       <div class="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -122,7 +122,7 @@ const getRankClass = (rank: number) => {
     </div>
     
     <!-- Content -->
-    <div class="p-3">
+    <div class="p-3 min-h-[250px] grid items-center">
       <!-- Loading -->
       <div v-if="loading" class="py-8 text-center text-slate-400 text-sm">
         Chargement...

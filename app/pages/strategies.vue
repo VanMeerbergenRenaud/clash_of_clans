@@ -40,16 +40,17 @@ const thLevels = ['Tout', 18, 17, 16]
 const newStrat = ref({
   title: '',
   description: '',
-  type: 'sol',
+  type: 'ground',
   min_town_hall: 16,
   army_link: '',
+  video_url: '',
   image_url: ''
 })
 
 const types = [
   { id: 'Tout', icon: Layers, label: 'Tout' },
-  { id: 'sol', icon: Sword, label: 'Sol' },
-  { id: 'aérien', icon: Wind, label: 'Aérien' },
+  { id: 'ground', icon: Sword, label: 'Sol' },
+  { id: 'air', icon: Wind, label: 'Aérien' },
 ]
 
 const fetchProfile = async () => {
@@ -133,6 +134,7 @@ const openEditSidebar = (strat: any) => {
     type: strat.type,
     min_town_hall: strat.min_town_hall,
     army_link: strat.army_link || '',
+    video_url: strat.video_url || '',
     image_url: strat.image_url || ''
   }
   imagePreview.value = strat.image_url || null
@@ -143,7 +145,7 @@ const openEditSidebar = (strat: any) => {
 const closeSidebar = () => {
   showSidebar.value = false
   editingStratId.value = null
-  newStrat.value = { title: '', description: '', type: 'sol', min_town_hall: 16, army_link: '', image_url: '' }
+  newStrat.value = { title: '', description: '', type: 'ground', min_town_hall: 16, army_link: '', video_url: '', image_url: '' }
   imageFile.value = null
   imagePreview.value = null
 }
@@ -260,11 +262,12 @@ const filteredStrats = computed(() => {
             :title="strat.title"
             :description="strat.description"
             :date="strat.created_at"
+            :video-url="strat.video_url"
             :badges="[
               { label: `HDV ${strat.min_town_hall}` },
-              { label: strat.type, variant: 'accent' }
+              { label: strat.type === 'ground' ? 'Sol' : 'Aérien', variant: 'accent' }
             ]"
-            :primary-action="strat.army_link ? { label: 'Ajouter l’armée dans Clash Of Clans', link: strat.army_link } : undefined"
+            :primary-action="strat.army_link ? { label: 'Armée', link: strat.army_link } : undefined"
             :secondary-action="strat.army_link ? { label: 'Copier', icon: 'copy', onClick: () => copyToClipboard(strat.army_link) } : undefined"
             :admin-actions="isAdmin ? [
               { icon: 'edit', onClick: () => openEditSidebar(strat) },
@@ -301,11 +304,13 @@ const filteredStrats = computed(() => {
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <UiSelect v-model="newStrat.type" label="Type" :options="['sol', 'aérien']" />
+          <UiSelect v-model="newStrat.type" label="Type" :options="[{label: 'Sol', value: 'ground'}, {label: 'Aérien', value: 'air'}]" />
           <UiSelect v-model="newStrat.min_town_hall" label="HDV Minimum" :options="[18, 17, 16]" />
         </div>
 
-        <UiInput v-model="newStrat.army_link" label="Lien de l'armée" placeholder="https://link.clashofclans.com/..." />
+        <UiInput v-model="newStrat.army_link" label="Lien de l'armée Clash Of Clans" placeholder="https://link.clashofclans.com/..." />
+        
+        <UiInput v-model="newStrat.video_url" label="Lien de la vidéo tuto sur YouTube" placeholder="https://www.youtube.com/watch?v=..." />
         
         <UiImageUpload v-model="imageFile" :preview="imagePreview" @update:preview="imagePreview = $event" />
       </form>

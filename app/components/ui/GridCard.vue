@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{
   description?: string
   date?: string
   badges?: Badge[]
+  videoUrl?: string
   primaryAction?: Action
   secondaryAction?: Action
   adminActions?: Action[]
@@ -47,11 +48,11 @@ const handleImageClick = () => {
 </script>
 
 <template>
-  <div class="group flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-lg hover:shadow-slate-100 transition-all duration-200">
+  <div class="group flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-sm hover:shadow-slate-100 transition-all duration-200">
     
     <!-- Image Area -->
     <div 
-      class="aspect-[4/3] bg-slate-100 relative overflow-hidden cursor-pointer"
+      class="aspect-[4/3] bg-slate-100 relative overflow-hidden cursor-pointer group/image"
       @click="handleImageClick"
     >
       <img 
@@ -65,7 +66,7 @@ const handleImageClick = () => {
       </div>
       
       <!-- Hover overlay with zoom icon -->
-      <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+      <div class="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-all duration-200">
         <div class="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
           <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
@@ -125,31 +126,41 @@ const handleImageClick = () => {
       </p>
 
       <!-- Actions -->
-      <div class="flex items-center justify-end gap-2 pt-3 mt-3 border-t border-slate-100">
-        <!-- Secondary Action (icon button) -->
+      <div class="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-slate-100">
+        
+        <!-- Secondary Action (Copy link) -->
         <button 
           v-if="secondaryAction"
-          class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          class="flex-1 min-w-[100px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-slate-200"
           :title="secondaryAction.label"
           @click="secondaryAction.onClick"
         >
-          <Copy v-if="secondaryAction.icon === 'copy'" class="w-4 h-4" />
+          <Copy class="w-4 h-4" />
+          <span class="whitespace-nowrap">{{ secondaryAction.label }}</span> 
         </button>
-        
+
         <!-- Primary Action -->
         <a 
           v-if="primaryAction?.link"
           :href="primaryAction.link" 
           target="_blank"
-          :class="[
-            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-            variant === 'strategy' 
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-              : 'bg-slate-900 text-white hover:bg-slate-800'
-          ]"
+          class="flex-1 min-w-[100px] inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all duration-200 border border-amber-100"
         >
-          <span>{{ primaryAction.label }}</span>
-          <ExternalLink class="w-3 h-3" />
+          <img src="/assets/img/coc_logo.png" class="w-6 h-6 object-contain" alt="COC" />
+          <span class="whitespace-nowrap">{{ primaryAction.label }}</span>
+        </a>
+
+        <!-- Video Action -->
+        <a 
+          v-if="videoUrl"
+          :href="videoUrl" 
+          target="_blank"
+          class="flex-1 min-w-[100px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-100"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+          <span class="whitespace-nowrap">Vidéo</span>
         </a>
       </div>
     </div>

@@ -85,7 +85,7 @@ const toggleUserMenu = (e: Event) => {
 
     <!-- Sidebar Container -->
     <aside
-      class="fixed lg:sticky top-0 left-0 z-50 h-screen bg-slate-50 border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col"
+      class="fixed lg:sticky top-0 left-0 z-20 h-screen bg-slate-50 border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col"
       :class="[
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         isExpanded ? 'lg:w-[260px]' : 'lg:w-[70px]',

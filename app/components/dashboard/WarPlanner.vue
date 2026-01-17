@@ -201,7 +201,7 @@ const updateNoteInDb = async (member: Member, field: 'war_note' | 'cwl_day', val
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[700px]">
       
       <!-- Pool Column -->
-      <div class="flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <div class="flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
           <h3 class="font-bold text-slate-700 flex items-center gap-2">
             <Shield class="w-4 h-4 text-indigo-500" />

@@ -234,8 +234,8 @@ const filteredBases = computed(() => {
               { label: `HDV ${base.th}` },
               { label: base.type, variant: 'accent' }
             ]"
-            :primary-action="{ label: 'Copier la base dans Clash Of Clans', link: base.link }"
-            :secondary-action="{ label: 'Copier', icon: 'copy', onClick: () => copyToClipboard(base.link) }"
+            :primary-action="{ label: 'Copier la base', link: base.link }"
+            :secondary-action="{ label: 'Copier le lien', icon: 'copy', onClick: () => copyToClipboard(base.link) }"
             :admin-actions="isAdmin ? [{ icon: 'delete', onClick: () => handleDeleteBase(base.id) }] : []"
             variant="base"
             @image-click="(url) => { modalImageUrl = url; showImageModal = true }"

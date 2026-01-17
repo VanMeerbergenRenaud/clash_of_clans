@@ -128,16 +128,47 @@ export default defineEventHandler(async (event) => {
 
             // 4. Record Participants
             const members = war.clan.members || []
-            const participantsData = members.map((m: any) => ({
-                war_id: savedWar.id,
-                player_tag: m.tag,
-                player_name: m.name,
-                stars: m.attacks ? m.attacks.reduce((acc: number, atk: any) => acc + atk.stars, 0) : 0,
-                destruction: m.attacks ? m.attacks.reduce((acc: number, atk: any) => acc + atk.destructionPercentage, 0) : 0,
-                attacks_count: m.attacks ? m.attacks.length : 0,
-                town_hall_level: m.townhallLevel,
-                map_position: m.mapPosition
-            }))
+            const opponentMembers = war.opponent.members || []
+
+            // Build a map of best defense for each our member
+            // Key: defenderTag, Value: { stars: number, destruction: number, attackerTag: string }
+            const defenseMap = new Map<string, { stars: number, destruction: number, attackerTag: string }>()
+
+            opponentMembers.forEach((op: any) => {
+                if (op.attacks) {
+                    op.attacks.forEach((atk: any) => {
+                        const currentBest = defenseMap.get(atk.defenderTag)
+                        // We want the BEST attack against us (Max Stars, Max Destruction)
+                        // If we have no record, or this attack is better than recorded, update it
+                        if (!currentBest ||
+                            atk.stars > currentBest.stars ||
+                            (atk.stars === currentBest.stars && atk.destructionPercentage > currentBest.destruction)) {
+                            defenseMap.set(atk.defenderTag, {
+                                stars: atk.stars,
+                                destruction: atk.destructionPercentage,
+                                attackerTag: op.tag
+                            })
+                        }
+                    })
+                }
+            })
+
+            const participantsData = members.map((m: any) => {
+                const defense = defenseMap.get(m.tag)
+                return {
+                    war_id: savedWar.id,
+                    player_tag: m.tag,
+                    player_name: m.name,
+                    stars: m.attacks ? m.attacks.reduce((acc: number, atk: any) => acc + atk.stars, 0) : 0,
+                    destruction: m.attacks ? m.attacks.reduce((acc: number, atk: any) => acc + atk.destructionPercentage, 0) : 0,
+                    attacks_count: m.attacks ? m.attacks.length : 0,
+                    town_hall_level: m.townhallLevel,
+                    map_position: m.mapPosition,
+                    defense_stars: defense ? defense.stars : null,
+                    defense_destruction: defense ? defense.destruction : null,
+                    defense_attacker_tag: defense ? defense.attackerTag : null
+                }
+            })
 
             if (participantsData.length > 0) {
                 const { error: partError } = await client

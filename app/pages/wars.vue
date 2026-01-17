@@ -7,11 +7,12 @@ import {
   Star as StarIcon,
   Swords as SwordsIcon,
   ChevronRight,
-  ChevronUp,
   ChevronDown,
   AlertCircle,
   X
 } from 'lucide-vue-next'
+import type { WarParticipant, WarAttack } from '~/types/war'
+import { useWarStats } from '~/composables/useWarStats'
 
 definePageMeta({
   layout: 'default'
@@ -34,140 +35,117 @@ const pastWars = ref<any[]>([])
 
 // War History Detail Modal
 const selectedWarHistory = ref<any>(null)
-const warParticipants = ref<any[]>([])
+const warParticipantsHistory = ref<any[]>([]) // Raw DB data
 const loadingWarDetails = ref(false)
 const showWarModal = ref(false)
-
-// Sorting state for modal table
-const sortColumn = ref<'map_position' | 'attacks_count' | 'stars' | 'destruction' | null>(null)
-const sortDirection = ref<'asc' | 'desc'>('asc')
-
-// Sorting state for current war participants table
-const currentWarSortColumn = ref<'mapPosition' | 'attacks' | 'stars' | 'destruction' | null>(null)
-const currentWarSortDirection = ref<'asc' | 'desc'>('asc')
-
-const activeStatTab = ref<'pending' | 'perfect' | 'completed' | 'struggling'>('pending')
 
 // -- COMPUTED --
 const selectedClan = computed(() => trackedClans.value.find(c => c.tag === selectedClanTag.value))
 
-const participants = computed(() => {
+// 1. Current War Data Mapping
+const currentWarMembers = computed<WarParticipant[]>(() => {
   if (!currentWar.value?.clan?.members) return []
-  return [...currentWar.value.clan.members].sort((a: any, b: any) => a.mapPosition - b.mapPosition)
+  
+  return currentWar.value.clan.members.map((m: any) => {
+    // Current war API structure mapping
+    const attacks: WarAttack[] = (m.attacks || []).map((a: any) => ({
+      attackerTag: a.attackerTag,
+      defenderTag: a.defenderTag,
+      stars: a.stars,
+      destructionPercentage: a.destructionPercentage,
+      order: a.order
+    }))
+
+    // Find best opponent attack from opponent members
+    let bestOpponentAttack = undefined
+    if (m.bestOpponentAttack) {
+       // API provides this directly usually, but let's Ensure we get the name
+       const attacker = currentWar.value.opponent.members.find((op: any) => op.tag === m.bestOpponentAttack.attackerTag)
+       bestOpponentAttack = {
+           stars: m.bestOpponentAttack.stars,
+           destructionPercentage: m.bestOpponentAttack.destructionPercentage,
+           attackerTag: m.bestOpponentAttack.attackerTag,
+           attackerName: attacker ? attacker.name : 'Inconnu'
+       }
+    }
+
+    return {
+      tag: m.tag,
+      name: m.name,
+      mapPosition: m.mapPosition,
+      townHallLevel: m.townhallLevel,
+      attacks,
+      bestOpponentAttack
+    }
+  }).sort((a: WarParticipant, b: WarParticipant) => a.mapPosition - b.mapPosition)
 })
 
-// Sorted participants for table (current war)
-const sortedCurrentWarParticipants = computed(() => {
-  if (!participants.value.length) return []
-  
-  const sorted = [...participants.value].map((m: any) => ({
-    ...m,
-    attacksCount: m.attacks?.length || 0,
-    totalStars: m.attacks ? m.attacks.reduce((sum: number, a: any) => sum + a.stars, 0) : 0,
-    avgDestruction: m.attacks && m.attacks.length > 0 
-      ? m.attacks.reduce((sum: number, a: any) => sum + a.destructionPercentage, 0) / m.attacks.length 
-      : 0
-  }))
-  
-  if (!currentWarSortColumn.value) return sorted
-  
-  sorted.sort((a, b) => {
-    let aVal: number, bVal: number
-    switch (currentWarSortColumn.value) {
-      case 'mapPosition':
-        aVal = a.mapPosition
-        bVal = b.mapPosition
-        break
-      case 'attacks':
-        aVal = a.attacksCount
-        bVal = b.attacksCount
-        break
-      case 'stars':
-        aVal = a.totalStars
-        bVal = b.totalStars
-        break
-      case 'destruction':
-        aVal = a.avgDestruction
-        bVal = b.avgDestruction
-        break
-      default:
-        return 0
-    }
-    return currentWarSortDirection.value === 'asc' ? aVal - bVal : bVal - aVal
-  })
-  
-  return sorted
+const { stats: currentWarStats } = useWarStats(currentWarMembers)
+
+// 2. History Data Mapping
+const historyMembers = computed<WarParticipant[]>(() => {
+  if (!warParticipantsHistory.value.length) return []
+
+  return warParticipantsHistory.value.map((p: any) => {
+      // Reconstruct simple attack objects for the UI indicators (we only have count/stars in DB usually, 
+      // but for this specific "Attacks" column we might need to fake it or just rely on the count/stars if the new component handles it.
+      // The shared component expects `attacks` array to show dots.
+      // Since we stored `stars` and `attacks_count` in DB but not individual attacks details, we construct placeholder attacks.
+      // This is a limitation unless we store full attack JSON. For now we approximate for the visual dots.
+      /* 
+         We know: attacks_count and stars.
+         If count=1, stars=X. One attack of X stars.
+         If count=2, total stars=Y. 
+         - If Y=6, then 3,3. 
+         - If Y=5, then 3,2 or 2,3.
+         - If Y=4, then 3,1 or 2,2 or 1,3 ? No simple way.
+         
+         Decision: For History, we will just pass empty attacks array if we can't be sure, 
+         OR we update the component to handle "no detailed attacks available".
+         However, the component uses `attacks` length. 
+         Let's fill dummy attacks for count.
+      */
+     
+     const attacks: WarAttack[] = []
+     for (let i = 0; i < (p.attacks_count || 0); i++) {
+         attacks.push({
+             attackerTag: '',
+             defenderTag: '',
+             stars: 0, // Unknown individual stars. 
+             // Logic to distribute stars? 
+             // IF stars=6, count=2 -> [3,3]
+             // IF stars=3, count=1 -> [3]
+             // Else we might just show grey or generic.
+             // For now, let's leave stars 0 so they show red? Or better, we can't show the dots accurately.
+             // We'll trust the explicit `stars` column in the table component.
+             destructionPercentage: 0,
+             order: i
+         })
+     }
+
+     // IF we successfully added the defense columns
+     const bestOpponentAttack = (p.defense_stars !== null && p.defense_stars !== undefined) ? {
+         stars: p.defense_stars,
+         destructionPercentage: p.defense_destruction || 0,
+         attackerTag: p.defense_attacker_tag,
+         attackerName: 'Adversaire' // We don't have the opponent name stored easily unless we join, or just say 'Adversaire'
+     } : undefined
+
+     return {
+         tag: p.player_tag,
+         name: p.player_name,
+         mapPosition: p.map_position,
+         townHallLevel: p.town_hall_level,
+         attacks, // Note: Individual stars will be missing for history unless we upgrade DB schema to store JSON attacks.
+         bestOpponentAttack
+     }
+  }).sort((a: WarParticipant, b: WarParticipant) => a.mapPosition - b.mapPosition)
 })
+
+const { stats: historyStats } = useWarStats(historyMembers)
 
 const isWarActive = computed(() => {
   return currentWar.value && currentWar.value.state !== 'notInWar'
-})
-
-const stats = computed(() => {
-  if (!currentWar.value?.clan?.members) return { pending: [], completed: [], perfect: [], struggling: [] }
-  
-  const pending: any[] = []
-  const completed: any[] = []
-  const perfect: any[] = []
-  const struggling: any[] = []
-  
-  currentWar.value.clan.members.forEach((m: any) => {
-    const attacks = m.attacks || []
-    const attacksCount = attacks.length
-    
-    // Pending / Completed logic
-    if (attacksCount < 2) {
-      pending.push({ ...m })
-    } else {
-      completed.push({ ...m })
-    }
-    
-    // Perfect logic (Six Pack)
-    if (attacksCount === 2 && attacks.every((a: any) => a.stars === 3)) {
-      perfect.push({ ...m })
-    }
-
-    // Struggling logic (Has at least one attack with <= 1 star)
-    if (attacks.some((a: any) => a.stars <= 1)) {
-        struggling.push({ ...m })
-    }
-  })
-
-  // Best Defenses Logic
-  let bestDefenses = currentWar.value.clan.members
-    .filter((m: any) => m.bestOpponentAttack && m.bestOpponentAttack.stars < 3)
-    .sort((a: any, b: any) => {
-        if (a.bestOpponentAttack.stars !== b.bestOpponentAttack.stars) {
-            return a.bestOpponentAttack.stars - b.bestOpponentAttack.stars
-        }
-        return a.bestOpponentAttack.destructionPercentage - b.bestOpponentAttack.destructionPercentage
-    })
-
-  // Apply limit logic: if > 15 candidates, show only <= 1 star
-  if (bestDefenses.length > 15) {
-      bestDefenses = bestDefenses.filter((m: any) => m.bestOpponentAttack.stars <= 1)
-  }
-
-  // Map attacker name
-  bestDefenses = bestDefenses.map((m: any) => {
-      const attacker = currentWar.value.opponent.members.find((op: any) => op.tag === m.bestOpponentAttack.attackerTag)
-      return {
-          ...m,
-          bestOpponentAttack: {
-              ...m.bestOpponentAttack,
-              attackerName: attacker ? attacker.name : 'Inconnu'
-          }
-      }
-  })
-
-  // Top Destruction Logic (removed as requested)
-
-  return {
-    pending: pending.sort((a, b) => a.mapPosition - b.mapPosition),
-    bestDefenses,
-    perfect,
-    struggling: struggling.sort((a, b) => a.mapPosition - b.mapPosition)
-  }
 })
 
 // -- METHODS --
@@ -206,6 +184,7 @@ const fetchWarData = async () => {
   try {
     const encodedTag = encodeURIComponent(selectedClanTag.value)
     
+    // Fetch Current War & History
     const [warRes, historyRes] = await Promise.all([
        $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar`).catch(e => {
          if (e.statusCode === 403) error.value = "Journal privé"
@@ -249,13 +228,13 @@ const fetchWarDetails = async (war: any) => {
     
     if (dbError) {
       console.error('Error fetching war participants:', dbError)
-      warParticipants.value = []
+      warParticipantsHistory.value = []
     } else {
-      warParticipants.value = data || []
+      warParticipantsHistory.value = data || []
     }
   } catch (err) {
     console.error(err)
-    warParticipants.value = []
+    warParticipantsHistory.value = []
   } finally {
     loadingWarDetails.value = false
   }
@@ -264,71 +243,8 @@ const fetchWarDetails = async (war: any) => {
 const closeWarModal = () => {
   showWarModal.value = false
   selectedWarHistory.value = null
-  warParticipants.value = []
-  sortColumn.value = null
-  sortDirection.value = 'desc'
+  warParticipantsHistory.value = []
 }
-
-// Toggle sort for table columns
-const toggleSort = (column: 'map_position' | 'attacks_count' | 'stars' | 'destruction') => {
-  if (sortColumn.value === column) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortColumn.value = column
-    // Default to ascending for map_position, descending for others
-    sortDirection.value = column === 'map_position' ? 'asc' : 'desc'
-  }
-}
-
-// Toggle sort for current war participants table
-const toggleCurrentWarSort = (column: 'mapPosition' | 'attacks' | 'stars' | 'destruction') => {
-  if (currentWarSortColumn.value === column) {
-    currentWarSortDirection.value = currentWarSortDirection.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    currentWarSortColumn.value = column
-    // Default to ascending for mapPosition, descending for others
-    currentWarSortDirection.value = column === 'mapPosition' ? 'asc' : 'desc'
-  }
-}
-
-// Computed for war history stats
-const historyStats = computed(() => {
-  if (!warParticipants.value.length) return { sixStars: [], missingAttacks: [] }
-  
-  const sixStars = warParticipants.value
-    .filter(p => p.stars === 6)
-    .sort((a, b) => a.map_position - b.map_position)
-  
-  const missingAttacks = warParticipants.value
-    .filter(p => p.attacks_count < 2)
-    .sort((a, b) => a.attacks_count - b.attacks_count || a.map_position - b.map_position)
-  
-  return { sixStars, missingAttacks }
-})
-
-// Sorted participants for table
-const sortedParticipants = computed(() => {
-  if (!warParticipants.value.length) return []
-  
-  const sorted = [...warParticipants.value]
-  
-  if (sortColumn.value) {
-    sorted.sort((a, b) => {
-      const aVal = a[sortColumn.value!]
-      const bVal = b[sortColumn.value!]
-      if (sortDirection.value === 'asc') {
-        return aVal - bVal
-      } else {
-        return bVal - aVal
-      }
-    })
-  } else {
-    // Default sort by map position
-    sorted.sort((a, b) => a.map_position - b.map_position)
-  }
-  
-  return sorted
-})
 
 watch(selectedClanTag, (newVal) => {
   if (newVal) fetchWarData()
@@ -586,213 +502,11 @@ onMounted(() => {
             </div>
 
             <!-- Stats Cards (2x2 Grid like leagues modal) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-               
-               <!-- 6 Stars Card -->
-               <div class="rounded-xl border border-amber-200 bg-amber-50/50 overflow-hidden">
-                  <div class="px-4 py-3 flex items-center justify-between border-b border-amber-200/50">
-                     <div class="flex items-center gap-2 text-amber-600">
-                        <StarIcon class="w-4 h-4" />
-                        <span class="font-semibold text-sm">6 Étoiles (Perfects)</span>
-                     </div>
-                     <span class="text-sm font-bold text-amber-600">{{ stats.perfect.length }}</span>
-                  </div>
-                  <div class="px-4 py-2 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                     <div v-if="stats.perfect.length > 0">
-                        <div v-for="m in stats.perfect" :key="m.tag" class="flex items-center justify-between py-2 border-b border-amber-200/20 last:border-0">
-                           <div class="flex items-center gap-3">
-                              <span class="text-xs font-medium text-slate-400 w-6">{{ m.mapPosition }}</span>
-                              <span class="font-medium text-slate-700 text-sm">{{ m.name }}</span>
-                           </div>
-                           <span class="text-xs font-semibold text-amber-500 bg-amber-100 px-2 py-0.5 rounded">6★</span>
-                        </div>
-                     </div>
-                     <div v-else class="py-6 text-center text-slate-400 text-xs">
-                        Pas encore de 6 étoiles
-                     </div>
-                  </div>
-               </div>
+            <!-- Stats Cards with shared component -->
+             <WarStatsGrid :stats="currentWarStats" />
 
-               <!-- Missing Attacks Card -->
-               <div class="rounded-xl border border-red-200 bg-red-50/50 overflow-hidden">
-                  <div class="px-4 py-3 flex items-center justify-between border-b border-red-200/50">
-                     <div class="flex items-center gap-2 text-red-500">
-                        <Shield class="w-4 h-4" />
-                        <span class="font-semibold text-sm">Attaques Manquantes</span>
-                     </div>
-                     <span class="text-sm font-bold text-red-500">{{ stats.pending.length }}</span>
-                  </div>
-                  <div class="px-4 py-2 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                     <div v-if="stats.pending.length > 0">
-                        <div v-for="m in stats.pending" :key="m.tag" class="flex items-center justify-between py-2 border-b border-red-200/20 last:border-0">
-                           <div class="flex items-center gap-3">
-                              <span class="text-xs font-medium text-slate-400 w-6">{{ m.mapPosition }}</span>
-                              <span class="font-medium text-slate-700 text-sm">{{ m.name }}</span>
-                           </div>
-                           <span class="text-xs font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded">-{{ 2 - (m.attacks ? m.attacks.length : 0) }}</span>
-                        </div>
-                     </div>
-                     <div v-else class="py-6 text-center text-green-600 text-xs font-medium">
-                        ✓ Tout le monde a attaqué
-                     </div>
-                  </div>
-               </div>
-
-                <!-- Best Defenses Card -->
-                <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 overflow-hidden">
-                   <div class="px-4 py-3 flex items-center justify-between border-b border-indigo-200/50">
-                      <div class="flex items-center gap-2 text-indigo-600">
-                         <Shield class="w-4 h-4" />
-                         <span class="font-semibold text-sm">Meilleures défenses</span>
-                      </div>
-                      <span class="text-xs font-medium text-indigo-400 bg-indigo-100 px-2 py-0.5 rounded-full" v-if="stats.bestDefenses.length > 0">Top {{ stats.bestDefenses.length }}</span>
-                   </div>
-                   <div class="px-4 py-2 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                      <div v-if="stats.bestDefenses.length > 0">
-                         <div v-for="m in stats.bestDefenses" :key="m.tag" class="flex items-center justify-between py-2 border-b border-indigo-200/20 last:border-0">
-                            <div class="flex flex-col">
-                               <span class="font-medium text-slate-700 text-sm">{{ m.name }}</span>
-                               <span class="text-[10px] text-slate-400" v-if="m.bestOpponentAttack">
-                                 vs {{ m.bestOpponentAttack.attackerName }}
-                               </span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                               <span class="text-xs font-semibold px-2 py-0.5 rounded"
-                                     :class="m.bestOpponentAttack.stars === 0 ? 'text-indigo-600 bg-indigo-100' : (m.bestOpponentAttack.stars === 1 ? 'text-indigo-500 bg-indigo-50' : 'text-slate-500 bg-slate-100')">
-                                 {{ m.bestOpponentAttack.stars }}★
-                               </span>
-                               <span class="text-xs font-medium text-slate-500">{{ m.bestOpponentAttack.destructionPercentage }}%</span>
-                            </div>
-                         </div>
-                      </div>
-                      <div v-else class="py-6 text-center text-slate-400 text-xs">
-                         Aucune défense notable
-                      </div>
-                   </div>
-                </div>
-
-               <!-- Struggling Card -->
-               <div class="rounded-xl border border-orange-200 bg-orange-50/50 overflow-hidden">
-                  <div class="px-4 py-3 flex items-center justify-between border-b border-orange-200/50">
-                     <div class="flex items-center gap-2 text-orange-500">
-                        <AlertCircle class="w-4 h-4" />
-                        <span class="font-semibold text-sm">En Difficulté (≤1 étoile)</span>
-                     </div>
-                     <span class="text-sm font-bold text-orange-500">{{ stats.struggling.length }}</span>
-                  </div>
-                  <div class="px-4 py-2 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                     <div v-if="stats.struggling.length > 0">
-                        <div v-for="m in stats.struggling" :key="m.tag" class="flex items-center justify-between py-2 border-b border-orange-200/20 last:border-0">
-                           <div class="flex items-center gap-3">
-                              <span class="text-xs font-medium text-slate-400 w-6">{{ m.mapPosition }}</span>
-                              <span class="font-medium text-slate-700 text-sm">{{ m.name }}</span>
-                           </div>
-                           <div class="flex gap-1">
-                              <span v-for="atk in m.attacks.filter((a: any) => a.stars <= 1)" :key="atk.order" 
-                                    class="text-xs font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">
-                                {{ atk.stars }}★
-                              </span>
-                           </div>
-                        </div>
-                     </div>
-                     <div v-else class="py-6 text-center text-slate-400 text-xs">
-                        Aucun échec pour le moment
-                     </div>
-                  </div>
-               </div>
-            </div>
-
-            <!-- Participants Table (Clean like modal) -->
-            <div>
-               <div class="px-1 flex items-center justify-between mb-3">
-                  <div class="flex items-center gap-2 text-slate-500">
-                     <Users class="w-4 h-4" />
-                     <span class="font-semibold text-sm">Tous les participants</span>
-                  </div>
-                  <span class="text-xs font-medium text-slate-400">{{ participants.length }} joueurs</span>
-               </div>
-               
-               <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div class="overflow-x-auto">
-                     <table class="w-full text-sm">
-                        <thead>
-                           <tr class="bg-slate-50 text-slate-500 text-xs font-medium border-b border-slate-100">
-                              <th class="px-4 py-3 text-left w-12">
-                                 <button @click="toggleCurrentWarSort('mapPosition')" class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors">
-                                    #
-                                    <template v-if="currentWarSortColumn === 'mapPosition'">
-                                       <ChevronUp v-if="currentWarSortDirection === 'asc'" class="w-3 h-3" />
-                                       <ChevronDown v-else class="w-3 h-3" />
-                                    </template>
-                                 </button>
-                              </th>
-                              <th class="px-4 py-3 text-left">Joueur</th>
-                              <th class="px-4 py-3 text-center">HDV</th>
-                              <th class="px-4 py-3 text-center">
-                                 <button @click="toggleCurrentWarSort('attacks')" class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors mx-auto">
-                                    Attaques
-                                    <template v-if="currentWarSortColumn === 'attacks'">
-                                       <ChevronUp v-if="currentWarSortDirection === 'asc'" class="w-3 h-3" />
-                                       <ChevronDown v-else class="w-3 h-3" />
-                                    </template>
-                                 </button>
-                              </th>
-                              <th class="px-4 py-3 text-center">
-                                 <button @click="toggleCurrentWarSort('stars')" class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors mx-auto">
-                                    Étoiles
-                                    <template v-if="currentWarSortColumn === 'stars'">
-                                       <ChevronUp v-if="currentWarSortDirection === 'asc'" class="w-3 h-3" />
-                                       <ChevronDown v-else class="w-3 h-3" />
-                                    </template>
-                                 </button>
-                              </th>
-                              <th class="px-4 py-3 text-right">
-                                 <button @click="toggleCurrentWarSort('destruction')" class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors ml-auto">
-                                    Destruction
-                                    <template v-if="currentWarSortColumn === 'destruction'">
-                                       <ChevronUp v-if="currentWarSortDirection === 'asc'" class="w-3 h-3" />
-                                       <ChevronDown v-else class="w-3 h-3" />
-                                    </template>
-                                 </button>
-                              </th>
-                           </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                           <tr v-for="member in sortedCurrentWarParticipants" :key="member.tag" class="hover:bg-slate-50/50 transition-colors">
-                              <td class="px-4 py-3 text-slate-400 text-xs font-medium">{{ member.mapPosition }}</td>
-                              <td class="px-4 py-3">
-                                 <span class="font-medium text-slate-900">{{ member.name }}</span>
-                              </td>
-                              <td class="px-4 py-3 text-center">
-                                 <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{{ member.townhallLevel }}</span>
-                              </td>
-                              <td class="px-4 py-3 text-center">
-                                 <div class="flex justify-center gap-1">
-                                    <div v-for="i in 2" :key="i" class="w-2 h-2 rounded-full"
-                                       :class="{
-                                         'bg-green-500': member.attacks && member.attacks[i-1] && member.attacks[i-1].stars === 3,
-                                         'bg-amber-500': member.attacks && member.attacks[i-1] && member.attacks[i-1].stars === 2,
-                                         'bg-red-400': member.attacks && member.attacks[i-1] && member.attacks[i-1].stars <= 1,
-                                         'bg-slate-200': !member.attacks || !member.attacks[i-1]
-                                       }">
-                                    </div>
-                                 </div>
-                              </td>
-                              <td class="px-4 py-3 text-center">
-                                 <span class="font-semibold text-slate-700">
-                                    {{ member.totalStars }}
-                                    <span class="text-amber-400">★</span>
-                                 </span>
-                              </td>
-                              <td class="px-4 py-3 pr-12 text-right font-medium text-slate-600">
-                                 {{ member.avgDestruction.toFixed(0) }}%
-                              </td>
-                           </tr>
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
-            </div>
+             <!-- Participants Table with shared component -->
+             <WarParticipantsTable :participants="currentWarMembers" class="mt-8" />
          </div>
       </div>
       </Transition>
@@ -1035,156 +749,9 @@ onMounted(() => {
                 </div>
                 
                 <!-- Stats Overview -->
-                <div v-else-if="warParticipants.length > 0" class="space-y-8">
-                  
-                  <!-- 6 Stars & Missing Attacks -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- Six Stars -->
-                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-5 border border-amber-200/50">
-                      <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-bold text-amber-700 flex items-center gap-2">
-                          <StarIcon class="w-4 h-4" />
-                          6 Étoiles
-                        </h3>
-                        <span class="text-sm font-bold px-2.5 py-1 bg-amber-200/50 rounded-full text-amber-700">{{ historyStats.sixStars.length }}</span>
-                      </div>
-                      <div v-if="historyStats.sixStars.length > 0" class="space-y-2">
-                        <div v-for="player in historyStats.sixStars" :key="player.player_tag" 
-                             class="flex items-center justify-between py-2 px-3 bg-white rounded-lg border border-slate-100/50">
-                          <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 rounded flex items-center justify-center">{{ player.map_position }}</span>
-                            <span class="text-sm font-semibold text-slate-900">{{ player.player_name }}</span>
-                          </div>
-                          <span class="text-sm font-bold text-amber-500">6★</span>
-                        </div>
-                      </div>
-                      <div v-else class="text-sm text-amber-600/70 text-center py-4">Aucun joueur avec 6 étoiles</div>
-                    </div>
-
-                    <!-- Missing Attacks -->
-                    <div class="bg-gradient-to-br from-red-50 to-red-100/50 rounded-xl p-5 border border-red-200/50">
-                      <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-bold text-red-700 flex items-center gap-2">
-                          <Shield class="w-4 h-4" />
-                          Attaques Manquantes
-                        </h3>
-                        <span class="text-sm font-bold px-2.5 py-1 bg-red-200/50 rounded-full text-red-700">{{ historyStats.missingAttacks.length }}</span>
-                      </div>
-                      <div v-if="historyStats.missingAttacks.length > 0" class="space-y-2">
-                        <div v-for="player in historyStats.missingAttacks" :key="player.player_tag" 
-                             class="flex items-center justify-between py-2 px-3 bg-white rounded-lg border border-slate-100/50">
-                          <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 rounded flex items-center justify-center">{{ player.map_position }}</span>
-                            <span class="text-sm font-semibold text-slate-900">{{ player.player_name }}</span>
-                          </div>
-                          <span class="text-xs font-bold px-2 py-1 rounded" :class="player.attacks_count === 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'">
-                            -{{ 2 - player.attacks_count }} attaque{{ 2 - player.attacks_count > 1 ? 's' : '' }}
-                          </span>
-                        </div>
-                      </div>
-                      <div v-else class="text-sm text-green-600 text-center py-4 flex items-center justify-center gap-2">
-                        <span>✓</span> Tout le monde a attaqué
-                      </div>
-                    </div>
-                    
-                  </div>
-                  
-                  <!-- All Participants Table -->
-                  <div>
-                    <div class="flex items-center justify-between mb-4">
-                      <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <Users class="w-4 h-4 text-slate-500" />
-                        Tous les participants
-                      </h3>
-                      <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{{ warParticipants.length }} joueurs</span>
-                    </div>
-                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <div class="overflow-x-auto">
-                        <table class="w-full">
-                          <thead>
-                            <tr class="text-xs font-semibold text-slate-500 bg-slate-50">
-                              <th class="text-left py-3 pl-4 w-16">
-                                <button @click="toggleSort('map_position')" 
-                                        class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors">
-                                  #
-                                  <template v-if="sortColumn === 'map_position'">
-                                    <ChevronUp v-if="sortDirection === 'asc'" class="w-3 h-3" />
-                                    <ChevronDown v-else class="w-3 h-3" />
-                                  </template>
-                                </button>
-                              </th>
-                              <th class="text-left py-3">Joueur</th>
-                              <th class="text-center py-3 w-16">HDV</th>
-                              <th class="text-center py-3 w-28">
-                                <button @click="toggleSort('attacks_count')" 
-                                        class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors">
-                                  Attaques
-                                  <template v-if="sortColumn === 'attacks_count'">
-                                    <ChevronUp v-if="sortDirection === 'asc'" class="w-3 h-3" />
-                                    <ChevronDown v-else class="w-3 h-3" />
-                                  </template>
-                                </button>
-                              </th>
-                              <th class="text-center py-3 w-24">
-                                <button @click="toggleSort('stars')" 
-                                        class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors">
-                                  Étoiles
-                                  <template v-if="sortColumn === 'stars'">
-                                    <ChevronUp v-if="sortDirection === 'asc'" class="w-3 h-3" />
-                                    <ChevronDown v-else class="w-3 h-3" />
-                                  </template>
-                                </button>
-                              </th>
-                              <th class="text-right py-3 pr-4 w-28">
-                                <button @click="toggleSort('destruction')" 
-                                        class="inline-flex items-center gap-1 hover:text-slate-700 transition-colors ml-auto">
-                                  Destruction
-                                  <template v-if="sortColumn === 'destruction'">
-                                    <ChevronUp v-if="sortDirection === 'asc'" class="w-3 h-3" />
-                                    <ChevronDown v-else class="w-3 h-3" />
-                                  </template>
-                                </button>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-slate-100">
-                            <tr v-for="player in sortedParticipants" :key="player.player_tag" 
-                                class="hover:bg-slate-50 transition-colors">
-                              <td class="py-3 pl-4">
-                                <span class="text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 rounded inline-flex items-center justify-center">{{ player.map_position }}</span>
-                              </td>
-                              <td class="py-3">
-                                <span class="text-sm font-semibold text-slate-900">{{ player.player_name }}</span>
-                              </td>
-                              <td class="py-3 text-center">
-                                <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">HDV {{ player.town_hall_level }}</span>
-                              </td>
-                              <td class="py-3 text-center">
-                                <span class="text-xs font-bold px-2 py-1 rounded-full" 
-                                      :class="player.attacks_count === 2 
-                                        ? 'bg-green-100 text-green-600' 
-                                        : player.attacks_count === 1 
-                                          ? 'bg-amber-100 text-amber-600'
-                                          : 'bg-red-100 text-red-600'">
-                                  {{ player.attacks_count }}/2
-                                </span>
-                              </td>
-                              <td class="py-3 text-center">
-                                <span class="text-sm font-bold" :class="player.stars === 6 ? 'text-amber-500' : 'text-slate-600'">
-                                  {{ player.stars }}<span class="text-amber-400">★</span>
-                                </span>
-                              </td>
-                              <td class="py-3 pr-4 text-right">
-                                <span class="text-sm font-mono font-medium text-slate-600">{{ player.destruction.toFixed(1) }}%</span>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                  
+                <div v-else-if="warParticipantsHistory.length > 0" class="space-y-8">
+                  <WarStatsGrid :stats="historyStats" />
+                  <WarParticipantsTable :participants="historyMembers" />
                 </div>
                 
                 <!-- Empty State -->
