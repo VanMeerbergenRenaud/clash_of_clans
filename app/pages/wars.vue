@@ -133,11 +133,38 @@ const stats = computed(() => {
     }
   })
 
+  // Best Defenses Logic
+  let bestDefenses = currentWar.value.clan.members
+    .filter((m: any) => m.bestOpponentAttack && m.bestOpponentAttack.stars < 3)
+    .sort((a: any, b: any) => {
+        if (a.bestOpponentAttack.stars !== b.bestOpponentAttack.stars) {
+            return a.bestOpponentAttack.stars - b.bestOpponentAttack.stars
+        }
+        return a.bestOpponentAttack.destructionPercentage - b.bestOpponentAttack.destructionPercentage
+    })
+
+  // Apply limit logic: if > 15 candidates, show only <= 1 star
+  if (bestDefenses.length > 15) {
+      bestDefenses = bestDefenses.filter((m: any) => m.bestOpponentAttack.stars <= 1)
+  }
+
+  // Map attacker name
+  bestDefenses = bestDefenses.map((m: any) => {
+      const attacker = currentWar.value.opponent.members.find((op: any) => op.tag === m.bestOpponentAttack.attackerTag)
+      return {
+          ...m,
+          bestOpponentAttack: {
+              ...m.bestOpponentAttack,
+              attackerName: attacker ? attacker.name : 'Inconnu'
+          }
+      }
+  })
+
   // Top Destruction Logic (removed as requested)
 
   return {
     pending: pending.sort((a, b) => a.mapPosition - b.mapPosition),
-    completed,
+    bestDefenses,
     perfect,
     struggling: struggling.sort((a, b) => a.mapPosition - b.mapPosition)
   }
@@ -611,36 +638,38 @@ onMounted(() => {
                   </div>
                </div>
 
-               <!-- Completed Card -->
-               <div class="rounded-xl border border-slate-200 bg-gray-100 overflow-hidden">
-                  <div class="px-4 py-3 flex items-center justify-between border-b border-slate-200">
-                     <div class="flex items-center gap-2 text-slate-600">
-                        <Trophy class="w-4 h-4" />
-                        <span class="font-semibold text-sm">Attaques Terminées</span>
-                     </div>
-                     <span class="text-sm font-bold text-slate-600">{{ stats.completed.length }}</span>
-                  </div>
-                  <div class="px-4 py-2 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                     <div v-if="stats.completed.length > 0">
-                        <div v-for="m in stats.completed" :key="m.tag" class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                           <div class="flex items-center gap-3">
-                              <span class="text-xs font-medium text-slate-400 w-6">{{ m.mapPosition }}</span>
-                              <span class="font-medium text-slate-700 text-sm">{{ m.name }}</span>
-                           </div>
-                           <div class="flex gap-1">
-                              <span v-for="atk in m.attacks" :key="atk.order" 
-                                    class="text-xs font-semibold px-1.5 py-0.5 rounded"
-                                    :class="atk.stars===3 ? 'text-green-500 bg-green-50' : (atk.stars===2 ? 'text-amber-500 bg-amber-50' : 'text-red-500 bg-red-50')">
-                                {{ atk.stars }}★
-                              </span>
-                           </div>
-                        </div>
-                     </div>
-                     <div v-else class="py-6 text-center text-slate-400 text-xs">
-                        Personne n'a terminé
-                     </div>
-                  </div>
-               </div>
+                <!-- Best Defenses Card -->
+                <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 overflow-hidden">
+                   <div class="px-4 py-3 flex items-center justify-between border-b border-indigo-200/50">
+                      <div class="flex items-center gap-2 text-indigo-600">
+                         <Shield class="w-4 h-4" />
+                         <span class="font-semibold text-sm">Meilleures défenses</span>
+                      </div>
+                      <span class="text-xs font-medium text-indigo-400 bg-indigo-100 px-2 py-0.5 rounded-full" v-if="stats.bestDefenses.length > 0">Top {{ stats.bestDefenses.length }}</span>
+                   </div>
+                   <div class="px-4 py-2 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                      <div v-if="stats.bestDefenses.length > 0">
+                         <div v-for="m in stats.bestDefenses" :key="m.tag" class="flex items-center justify-between py-2 border-b border-indigo-200/20 last:border-0">
+                            <div class="flex flex-col">
+                               <span class="font-medium text-slate-700 text-sm">{{ m.name }}</span>
+                               <span class="text-[10px] text-slate-400" v-if="m.bestOpponentAttack">
+                                 vs {{ m.bestOpponentAttack.attackerName }}
+                               </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                               <span class="text-xs font-semibold px-2 py-0.5 rounded"
+                                     :class="m.bestOpponentAttack.stars === 0 ? 'text-indigo-600 bg-indigo-100' : (m.bestOpponentAttack.stars === 1 ? 'text-indigo-500 bg-indigo-50' : 'text-slate-500 bg-slate-100')">
+                                 {{ m.bestOpponentAttack.stars }}★
+                               </span>
+                               <span class="text-xs font-medium text-slate-500">{{ m.bestOpponentAttack.destructionPercentage }}%</span>
+                            </div>
+                         </div>
+                      </div>
+                      <div v-else class="py-6 text-center text-slate-400 text-xs">
+                         Aucune défense notable
+                      </div>
+                   </div>
+                </div>
 
                <!-- Struggling Card -->
                <div class="rounded-xl border border-orange-200 bg-orange-50/50 overflow-hidden">
