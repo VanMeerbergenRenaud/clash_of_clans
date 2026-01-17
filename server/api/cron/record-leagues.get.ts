@@ -55,6 +55,25 @@ export default defineEventHandler(async (event) => {
                 continue
             }
 
+            // Only record CWL when it has ended or when all rounds are complete
+            // This prevents unnecessary DB writes during the 7-day CWL period
+            const isEnded = leagueGroup.state === 'ended'
+            const rounds = leagueGroup.rounds || []
+            const allRoundsComplete = rounds.length === 7 && rounds.every((round: any) =>
+                round.warTags?.every((tag: string) => tag !== '#0')
+            )
+
+            if (!isEnded && !allRoundsComplete) {
+                const completedRounds = rounds.filter((r: any) =>
+                    r.warTags?.every((tag: string) => tag !== '#0')
+                ).length
+                results.push({
+                    tag: clan.tag,
+                    status: `skipped (CWL in progress, ${completedRounds}/7 rounds complete)`
+                })
+                continue
+            }
+
             // 3. Get clan's war league info
             const clanInfo: any = await $fetch(`${baseUrl}/clans/${encodedTag}`, {
                 headers: {
