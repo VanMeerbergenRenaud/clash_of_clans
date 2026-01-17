@@ -191,8 +191,7 @@ const toggleUserMenu = (e: Event) => {
         >
           <div 
             v-if="isUserMenuOpen"
-            class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-w-[220px]"
-            :class="(isExpanded || isMobileOpen) ? '' : 'left-full ml-2 bottom-0'" 
+            class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-w-[220px] z-50"
           >
              <!-- Menu Items -->
              <div class="p-1">
