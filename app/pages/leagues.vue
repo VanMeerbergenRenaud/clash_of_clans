@@ -448,7 +448,7 @@ onMounted(() => {
               v-for="h in leagueHistory" 
               :key="h.id" 
               @click="fetchLeagueDetails(h)" 
-              class="group w-full flex flex-col md:flex-row md:items-center justify-between p-4 md:p-5 bg-white border border-slate-100 rounded-xl transition-all duration-200"
+              class="group w-full flex flex-col md:flex-row md:items-center justify-between p-4 md:p-5 bg-white border border-slate-200 rounded-xl transition-all duration-200"
             >
               <!-- Info Section -->
               <div class="flex items-center gap-4">
@@ -805,7 +805,7 @@ onMounted(() => {
                                       <span class="text-amber-400">★</span>
                                     </span>
                                   </td>
-                                  <td class="px-4 py-3 pr-11 font-medium text-right text-slate-600">
+                                  <td class="px-4 py-3 font-medium text-right text-slate-600">
                                     {{ p.total_destruction }} %
                                   </td>
                                </tr>

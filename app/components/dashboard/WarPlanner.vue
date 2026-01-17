@@ -203,9 +203,9 @@ const updateNoteInDb = async (member: Member, field: 'war_note' | 'cwl_day', val
       <!-- Pool Column -->
       <div class="flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-          <h3 class="font-bold text-slate-700 flex items-center gap-2">
+          <h3 class="font-bold text-slate-700 flex items-center gap-3">
             <Shield class="w-4 h-4 text-indigo-500" />
-            Membres Disponibles
+            Membres disponibles
           </h3>
         </div>
         <div class="flex-1 overflow-y-auto bg-slate-50/50 p-2 space-y-4">
@@ -237,9 +237,9 @@ const updateNoteInDb = async (member: Member, field: 'war_note' | 'cwl_day', val
       <!-- War Column -->
       <div class="flex flex-col bg-white rounded-2xl border border-red-100 overflow-hidden shadow-sm">
         <div class="p-4 border-b border-red-50 bg-red-50/30 flex justify-between items-center">
-          <h3 class="font-bold text-red-700 flex items-center gap-2">
+          <h3 class="font-bold text-red-700 flex items-center gap-3">
             <UserMinus class="w-4 h-4" />
-            Exclus Guerre
+            Exclus aux guerres
           </h3>
         </div>
         <div class="flex-1 overflow-y-auto bg-red-50/10 p-2 space-y-4">
@@ -271,9 +271,9 @@ const updateNoteInDb = async (member: Member, field: 'war_note' | 'cwl_day', val
        <!-- CWL Column -->
       <div class="flex flex-col bg-white rounded-2xl border border-amber-100 overflow-hidden shadow-sm">
         <div class="p-4 border-b border-amber-50 bg-amber-50/30 flex justify-between items-center">
-          <h3 class="font-bold text-amber-700 flex items-center gap-2">
+          <h3 class="font-bold text-amber-700 flex items-center gap-3">
             <RotateCcw class="w-4 h-4" />
-            Rotation CWL
+            Rotation en ligue
           </h3>
         </div>
         <div class="flex-1 overflow-y-auto bg-amber-50/10 p-2 space-y-4">

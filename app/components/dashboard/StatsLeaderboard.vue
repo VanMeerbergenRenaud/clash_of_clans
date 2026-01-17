@@ -122,7 +122,7 @@ const getRankClass = (rank: number) => {
     </div>
     
     <!-- Content -->
-    <div class="p-3 min-h-[250px] grid items-center">
+    <div class="p-3 min-h-[250px] max-h-[400px] overflow-y-scroll grid items-center">
       <!-- Loading -->
       <div v-if="loading" class="py-8 text-center text-slate-400 text-sm">
         Chargement...
