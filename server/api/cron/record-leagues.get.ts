@@ -125,6 +125,8 @@ export default defineEventHandler(async (event) => {
 
             // 6. Process all war rounds to get player stats
             const playerStatsMap = new Map<string, any>()
+            // Track best defense for each player across all rounds
+            const defenseMap = new Map<string, { stars: number, destruction: number, attackerTag: string }>()
             let totalClanStars = 0
             let totalClanDestruction = 0
 
@@ -144,11 +146,36 @@ export default defineEventHandler(async (event) => {
                         // Find our clan in the war
                         const ourClan = warData.clan?.tag === clan.tag ? warData.clan :
                             warData.opponent?.tag === clan.tag ? warData.opponent : null
+                        const opponentClan = warData.clan?.tag === clan.tag ? warData.opponent :
+                            warData.opponent?.tag === clan.tag ? warData.clan : null
 
                         if (!ourClan || !ourClan.members) continue
 
                         // Determine the day (round index)
                         const roundIndex = leagueGroup.rounds.indexOf(round) + 1
+
+                        // Process opponent attacks to track defenses
+                        if (opponentClan && opponentClan.members) {
+                            for (const oppMember of opponentClan.members) {
+                                if (oppMember.attacks) {
+                                    for (const attack of oppMember.attacks) {
+                                        const defenderTag = attack.defenderTag
+                                        const currentBest = defenseMap.get(defenderTag)
+
+                                        // Track the BEST (highest stars/destruction) opponent attack against each of our players
+                                        if (!currentBest ||
+                                            attack.stars > currentBest.stars ||
+                                            (attack.stars === currentBest.stars && attack.destructionPercentage > currentBest.destruction)) {
+                                            defenseMap.set(defenderTag, {
+                                                stars: attack.stars,
+                                                destruction: attack.destructionPercentage,
+                                                attackerTag: oppMember.tag
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         // Process each member's attacks
                         for (const member of ourClan.members) {
@@ -199,11 +226,17 @@ export default defineEventHandler(async (event) => {
                 })
                 .eq('id', savedLeague.id)
 
-            // 8. Upsert all participants
-            const participantsData = Array.from(playerStatsMap.values()).map(p => ({
-                league_history_id: savedLeague.id,
-                ...p
-            }))
+            // 8. Upsert all participants with defense data
+            const participantsData = Array.from(playerStatsMap.values()).map(p => {
+                const defense = defenseMap.get(p.player_tag)
+                return {
+                    league_history_id: savedLeague.id,
+                    ...p,
+                    defense_stars: defense ? defense.stars : null,
+                    defense_destruction: defense ? defense.destruction : null,
+                    defense_attacker_tag: defense ? defense.attackerTag : null
+                }
+            })
 
             if (participantsData.length > 0) {
                 const { error: partError } = await client

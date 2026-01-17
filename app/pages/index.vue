@@ -23,118 +23,86 @@ const leagueStats = useLeaderboardStats('league')
 const fetchData = async () => {
   loading.value = true
   try {
-    // 1. Fetch Tracked Clans
-    // Order by 'order' column if exists, otherwise by name. 
-    // We'll trust the API returns them or sort locally.
-    const { data: clans, error } = await (supabase.from('tracked_clans') as any).select('*').order('created_at', { ascending: true }) // Using created_at as proxy for "order added" if no order col
-    if (error) throw error
-    
-    // Add an index-based order if not present
-    // Or if the user meant "Clan Level" order? "Ordered" usually means "My preference".
-    // Let's rely on the DB return order (Tracked Clans list).
-    clans.forEach((c: any, index: number) => {
-        if (!c.order) c.order = index + 1
-    })
+    // 1. Fetch Tracked Clans and Planning Data in parallel
+    const [clansRes, planningRes] = await Promise.all([
+      (supabase.from('tracked_clans') as any).select('*').order('created_at', { ascending: true }),
+      (supabase.from('planning_members') as any).select('*')
+    ])
 
-    // 2. Fetch Clans Info (API) AND Members
-    // In a real app we might have members stored in DB or fetch them from API.
-    // Let's assume we fetch members from API for each clan.
-    
-    // Also fetch the Planning Data (DB)
-    const { data: planningData, error: planningError } = await (supabase.from('planning_members') as any).select('*')
-    if (planningError) {
-      console.error('Error fetching planning data:', planningError)
-      // Don't throw, just proceed with empty planning to prevent whole dashboard crash
-    }
+    if (clansRes.error) throw clansRes.error
+    const clans = clansRes.data || []
     
     // Create a map of planning data manually by tag
-    // Normalize keys: UPPERCASE and remove '#'
     const normalizeTag = (t: string) => t ? t.toUpperCase().replace(/#/g, '').trim() : ''
-    
     const planningMap = new Map()
-    if (planningData) {
-      planningData.forEach((p: any) => {
+    if (planningRes.data) {
+      planningRes.data.forEach((p: any) => {
          if(p.tag) planningMap.set(normalizeTag(p.tag), p)
       })
     }
-    
-    console.log('DEBUG: Loaded Planning Data entries:', planningMap.size)
 
-    const allfetchedMembers: any[] = []
+    // Initialize display with empty list but stop global loading
+    planningMembers.value = []
+    loading.value = false
 
-    const data = await Promise.all(clans.map(async (clan: any) => {
+    // Initialize display
+    planningMembers.value = []
+    clansInfo.value = []
+    loading.value = false
+
+    // 2. Fetch Clans Info (API) AND Members incrementally
+    // Use a Map to store members by clan to avoid race conditions when merging
+    const clanMembersMap = new Map<string, any[]>()
+
+    clans.forEach((clan: any, index: number) => {
+      const clanOrder = clan.ordered ?? (index + 1)
       const encodedTag = encodeURIComponent(clan.tag)
-      try {
-        const info = await $fetch<any>(`/api/coc/clans/${encodedTag}`)
-        
-        // Extract members and merge with planning data
-        let matchCount = 0
-        if (info.memberList) {
-           info.memberList.forEach((m: any) => {
-              // Normalize lookup
+      
+      $fetch<any>(`/api/coc/clans/${encodedTag}`, { retry: 0 })
+        .then(info => {
+          const clanMembers: any[] = []
+          if (info.memberList) {
+            info.memberList.forEach((m: any) => {
               const lookupKey = normalizeTag(m.tag)
               const pData = planningMap.get(lookupKey)
               
-              if (pData) matchCount++
-              
-              allfetchedMembers.push({
-                 id: m.tag, // Keep original tag for ID
-                 name: m.name,
-                 role: m.role,
-                 clanTag: clan.tag,
-                 clanName: clan.name,
-                 clanOrder: clan.order || 0, // Ensure order exists
-                 warPreference: m.warPreference, // API status
-                 league: m.league, // Pass league data
-                 leagueTier: m.leagueTier, // Pass leagueTier data if available
-                 // DB overrides/extensions
-                 status: (pData?.cwl_status === 'excluded') ? 'cwl_rotation' 
-                         : pData?.war_status === 'excluded' ? 'war_excluded' 
-                         : 'available',
-                 warNote: pData?.war_note,
-                 cwlDay: pData?.cwl_day
+              clanMembers.push({
+                id: m.tag,
+                name: m.name,
+                role: m.role,
+                clanTag: clan.tag,
+                clanName: clan.name,
+                clanOrder: clanOrder,
+                warPreference: m.warPreference,
+                league: m.league,
+                leagueTier: m.leagueTier,
+                status: (pData?.cwl_status === 'excluded') ? 'cwl_rotation' 
+                        : pData?.war_status === 'excluded' ? 'war_excluded' 
+                        : 'available',
+                warNote: pData?.war_note,
+                cwlDay: pData?.cwl_day
               })
-           })
-        }
-        console.log(`DEBUG: Clan ${clan.name} - Matched ${matchCount} planning records`)
-        
-        return { ...clan, info }
-      } catch (e) {
-        // Mock data if API fails
-        const mockMembers = Array.from({ length: 15 }).map((_, i) => ({
-             tag: `#MOCK${clan.tag}${i}`,
-             name: `Member ${i} of ${clan.name}`
-        }))
-        
-        mockMembers.forEach((m: any) => {
-             const lookupKey = normalizeTag(m.tag)
-             const pData = planningMap.get(lookupKey)
-             
-             allfetchedMembers.push({
-                 id: m.tag,
-                 name: m.name,
-                 role: 'member',
-                 clanTag: clan.tag,
-                 clanName: clan.name,
-                 clanOrder: clan.order || 0,
-                 status: (pData?.cwl_status === 'excluded') ? 'cwl_rotation' 
-                         : pData?.war_status === 'excluded' ? 'war_excluded' 
-                         : 'available',
-                 warNote: pData?.war_note,
-                 cwlDay: pData?.cwl_day
-              })
+            })
+          }
+          
+          // Store in map using tag as key
+          clanMembersMap.set(clan.tag, clanMembers)
+          
+          // Rebuild the full list from the map (Safe from race conditions)
+          planningMembers.value = Array.from(clanMembersMap.values()).flat()
+          
+          // Add to clans info
+          clansInfo.value = [...clansInfo.value, { ...clan, info }]
+          
+          console.log(`[Dashboard] Loaded ${clan.name}: ${clanMembers.length} members`)
         })
-
-        return { ...clan, info: { name: clan.name, error: true } }
-      }
-    }))
-    
-    clansInfo.value = data
-    planningMembers.value = allfetchedMembers
+        .catch(err => {
+          console.error(`[Dashboard] Error loading clan ${clan.name}:`, err)
+        })
+    })
 
   } catch (err) {
     console.error('Error fetching dashboard data:', err)
-  } finally {
     loading.value = false
   }
 }
@@ -187,7 +155,7 @@ onMounted(() => {
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <StatsLeaderboard
         type="war"
-        title="Stats Guerres"
+        title="Stats des guerres"
         :perfect-leaderboard="warStats.perfectLeaderboard.value"
         :one-star-leaderboard="warStats.oneStarLeaderboard.value"
         :filters="warStats.filters.value"
@@ -198,7 +166,7 @@ onMounted(() => {
       
       <StatsLeaderboard
         type="league"
-        title="Stats Ligues"
+        title="Stats des ligues"
         :perfect-leaderboard="leagueStats.perfectLeaderboard.value"
         :one-star-leaderboard="leagueStats.oneStarLeaderboard.value"
         :filters="leagueStats.filters.value"

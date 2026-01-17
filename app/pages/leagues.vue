@@ -123,23 +123,28 @@ const fetchLeagueData = async () => {
   try {
     const encodedTag = encodeURIComponent(selectedClanTag.value)
     
-    // 1. Fetch current CWL group
-    const groupRes = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar/leaguegroup`).catch(() => null)
-    leagueGroup.value = groupRes
-
-    // 2. Fetch history from DB
-    const historyRes = await supabase
+    // 1. History from DB (usually fast)
+    const historyPromise = supabase
       .from('league_history')
       .select('*')
       .eq('clan_tag', selectedClanTag.value)
       .order('season', { ascending: false })
       .limit(10)
+      .then(res => {
+        leagueHistory.value = res.data || []
+        return res
+      })
 
-    leagueHistory.value = historyRes.data || []
+    // 2. Current CWL group from API (can be slow)
+    const groupRes = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar/leaguegroup`, { retry: 0 }).catch(() => null)
+    leagueGroup.value = groupRes
+    
+    // Ensure history is also loaded if not already
+    await historyPromise
 
     // 3. If in league, fetch the current/latest war to show round details
     if (groupRes && groupRes.state !== 'notInWar') {
-      const warRes = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar`).catch(() => null)
+      const warRes = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar`, { retry: 0 }).catch(() => null)
       currentWar.value = warRes?.state !== 'notInWar' ? warRes : null
     } else {
       currentWar.value = null
@@ -205,7 +210,7 @@ const sortedParticipants = computed(() => {
 })
 
 const leagueSessionStats = computed(() => {
-  if (!leagueParticipants.value.length) return { best: [], missing: [] }
+  if (!leagueParticipants.value.length) return { best: [], missing: [], struggling: [], bestDefenses: [] }
   
   // Calculate best performers
   const playersWithStats = leagueParticipants.value.map(p => {
@@ -213,7 +218,9 @@ const leagueSessionStats = computed(() => {
     // Since 3 is max, total_stars === attacks_used * 3 is equivalent to "only 3-star attacks"
     const isPerfect = (p.attacks_used || 0) > 0 && (p.total_stars || 0) === (p.attacks_used || 0) * 3
     const threeStarCount = (p.daily_attacks || []).filter((a: any) => a.stars === 3).length
-    return { ...p, isPerfect, threeStarCount }
+    // Get attacks with ≤1 star
+    const lowStarAttacks = (p.daily_attacks || []).filter((a: any) => a.stars <= 1)
+    return { ...p, isPerfect, threeStarCount, lowStarAttacks }
   })
 
   // 1. All perfect performers, sorted by number of attacks then destruction
@@ -244,7 +251,36 @@ const leagueSessionStats = computed(() => {
     .filter(p => (p.attacks_used || 0) < 7)
     .sort((a, b) => (a.attacks_used || 0) - (b.attacks_used || 0))
 
-  return { best: combined, missing }
+  // Struggling players: those with at least one attack with ≤1 star
+  const struggling = playersWithStats
+    .filter(p => p.lowStarAttacks.length > 0)
+    .sort((a, b) => b.lowStarAttacks.length - a.lowStarAttacks.length || a.map_position - b.map_position)
+
+  // Best defenses: Players who have defense data and defended well (less than 3 stars)
+  let bestDefenses = leagueParticipants.value
+    .filter(p => p.defense_stars !== null && p.defense_stars !== undefined && p.defense_stars < 3)
+    .map(p => ({
+      ...p,
+      bestOpponentAttack: {
+        stars: p.defense_stars,
+        destructionPercentage: p.defense_destruction || 0,
+        attackerTag: p.defense_attacker_tag,
+        attackerName: 'Adversaire' // We don't store opponent names
+      }
+    }))
+    .sort((a, b) => {
+      if (a.defense_stars !== b.defense_stars) {
+        return (a.defense_stars || 0) - (b.defense_stars || 0)
+      }
+      return (a.defense_destruction || 0) - (b.defense_destruction || 0)
+    })
+
+  // Limit to top 15 or only show ≤1 stars if too many
+  if (bestDefenses.length > 15) {
+    bestDefenses = bestDefenses.filter(p => (p.defense_stars || 0) <= 1)
+  }
+
+  return { best: combined, missing, struggling, bestDefenses }
 })
 
 watch(selectedClanTag, (newVal) => {
@@ -735,6 +771,69 @@ onMounted(() => {
                          </div>
                          <div v-else class="py-6 text-center text-green-600 text-xs font-medium">
                             ✓ Toutes les attaques complétées
+                         </div>
+                      </div>
+                   </div>
+
+                   <!-- Meilleures défenses Card -->
+                   <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 overflow-hidden">
+                      <div class="px-4 py-3 flex items-center justify-between border-b border-indigo-200/50">
+                         <div class="flex items-center gap-2 text-indigo-600">
+                            <Shield class="w-4 h-4" />
+                            <span class="font-semibold text-sm">Meilleures défenses</span>
+                         </div>
+                         <span class="text-xs font-medium text-indigo-400 bg-indigo-100 px-2 py-0.5 rounded-full" v-if="leagueSessionStats.bestDefenses.length > 0">Top {{ leagueSessionStats.bestDefenses.length }}</span>
+                      </div>
+                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                         <div v-if="leagueSessionStats.bestDefenses.length > 0">
+                            <div v-for="p in leagueSessionStats.bestDefenses" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-indigo-200/20 last:border-0">
+                               <div class="flex flex-col">
+                                  <span class="font-medium text-slate-700 text-sm">{{ p.player_name }}</span>
+                                  <span class="text-[10px] text-slate-400" v-if="p.bestOpponentAttack?.attackerName">
+                                     vs {{ p.bestOpponentAttack.attackerName }}
+                                  </span>
+                               </div>
+                               <div class="flex items-center gap-2" v-if="p.bestOpponentAttack">
+                                  <span class="text-xs font-semibold px-2 py-0.5 rounded"
+                                          :class="p.bestOpponentAttack.stars === 0 ? 'text-indigo-600 bg-indigo-100' : (p.bestOpponentAttack.stars === 1 ? 'text-indigo-500 bg-indigo-50' : 'text-slate-500 bg-slate-100')">
+                                     {{ p.bestOpponentAttack.stars }}★
+                                  </span>
+                                  <span class="text-xs font-medium text-slate-500">{{ p.bestOpponentAttack.destructionPercentage?.toFixed(0) }}%</span>
+                               </div>
+                            </div>
+                         </div>
+                         <div v-else class="py-6 text-center text-slate-400 text-xs">
+                            Données de défense non disponibles
+                         </div>
+                      </div>
+                   </div>
+
+                   <!-- En Difficulté Card -->
+                   <div class="rounded-xl border border-orange-200 bg-orange-50/50 overflow-hidden">
+                      <div class="px-4 py-3 flex items-center justify-between border-b border-orange-200/50">
+                         <div class="flex items-center gap-2 text-orange-500">
+                            <AlertCircle class="w-4 h-4" />
+                            <span class="font-semibold text-sm">En Difficulté (≤1 étoile)</span>
+                         </div>
+                         <span class="text-sm font-bold text-orange-500">{{ leagueSessionStats.struggling.length }}</span>
+                      </div>
+                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                         <div v-if="leagueSessionStats.struggling.length > 0">
+                            <div v-for="p in leagueSessionStats.struggling" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-orange-200/20 last:border-0">
+                               <div class="flex items-center gap-3">
+                                  <span class="text-xs font-medium text-slate-400 w-6">{{ p.map_position }}</span>
+                                  <span class="font-medium text-slate-700 text-sm">{{ p.player_name }}</span>
+                               </div>
+                               <div class="flex gap-1">
+                                  <span v-for="(atk, idx) in p.lowStarAttacks" :key="idx" 
+                                        class="text-xs font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">
+                                     {{ atk.stars }}★
+                                  </span>
+                               </div>
+                            </div>
+                         </div>
+                         <div v-else class="py-6 text-center text-slate-400 text-xs">
+                            Aucun échec pour le moment
                          </div>
                       </div>
                    </div>

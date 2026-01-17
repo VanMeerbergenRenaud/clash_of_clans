@@ -22,7 +22,8 @@ export default defineEventHandler(async (event) => {
                 Authorization: `Bearer ${token}`,
                 Accept: 'application/json'
             },
-            query: query
+            query: query,
+            retry: 0
         })
         return response
     } catch (error: any) {

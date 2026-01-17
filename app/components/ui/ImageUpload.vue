@@ -4,6 +4,7 @@ import { Image as ImageIcon, X } from 'lucide-vue-next'
 const props = defineProps<{
   modelValue: File | null
   preview: string | null
+  error?: string
 }>()
 
 const emit = defineEmits<{
@@ -47,7 +48,8 @@ const handleDrop = (event: DragEvent) => {
     <div 
       class="relative aspect-video rounded-2xl border overflow-hidden flex flex-col items-center justify-center bg-slate-50/50 group transition-all cursor-pointer"
       :class="[
-        isDragging ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 border-dashed hover:border-emerald-500/50 hover:bg-slate-50'
+        isDragging ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 border-dashed hover:border-emerald-500/50 hover:bg-slate-50',
+        error ? 'ring-1 ring-red-500/80 border-red-500' : ''
       ]"
       @click="fileInput?.click()"
       @dragover.prevent="isDragging = true"
@@ -84,6 +86,7 @@ const handleDrop = (event: DragEvent) => {
         accept="image/*" 
         @change="handleFileChange" 
       />
-    </div>
+      </div>
+    <p v-if="error" class="pl-3 text-sm text-red-600">{{ error }}</p>
   </div>
 </template>

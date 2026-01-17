@@ -10,10 +10,12 @@ export interface LeaderboardEntry {
     playerTag: string
     playerName: string
     perfectCount: number    // 6-star for wars, 3-star per day for leagues
-    oneStarCount: number    // 1-star attacks
+    oneStarCount: number    // 0-star + 1-star attacks combined
+    zeroStarCount: number   // 0-star attacks only
     totalStars: number
     totalAttacks: number
     averageStars: number
+    worstDestructionAvg: number  // Average destruction % for 0-1 star attacks (for sorting)
 }
 
 export interface LeaderboardFilters {
@@ -30,7 +32,7 @@ export const rangeOptions = [
     { label: '3 dernières', value: 'last3' },
     { label: '5 dernières', value: 'last5' },
     { label: '10 dernières', value: 'last10' },
-    { label: 'Toutes', value: 'all' }
+    { label: 'Toutes les', value: 'all' }
 ]
 
 export function useLeaderboardStats(type: LeaderboardType) {
@@ -42,7 +44,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
     const clans = ref<{ tag: string; name: string }[]>([])
 
     const filters = ref<LeaderboardFilters>({
-        range: 'last5',
+        range: 'last1',
         clanTag: 'all'
     })
 
@@ -120,10 +122,13 @@ export function useLeaderboardStats(type: LeaderboardType) {
             playerTag: string
             playerName: string
             perfectCount: number
-            oneStarCount: number
+            zeroStarCount: number    // 0-star attacks
+            oneStarCount: number     // 0-star + 1-star combined
             totalStars: number
             totalAttacks: number
             warsPlayed: number
+            worstDestructionSum: number  // Sum of destruction % for 0-1 star attacks
+            worstDestructionCount: number // Count for averaging
         }>()
 
         for (const p of participants) {
@@ -131,10 +136,13 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 playerTag: p.player_tag,
                 playerName: p.player_name,
                 perfectCount: 0,
+                zeroStarCount: 0,
                 oneStarCount: 0,
                 totalStars: 0,
                 totalAttacks: 0,
-                warsPlayed: 0
+                warsPlayed: 0,
+                worstDestructionSum: 0,
+                worstDestructionCount: 0
             }
 
             existing.totalStars += p.stars || 0
@@ -146,9 +154,18 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 existing.perfectCount += 1
             }
 
-            // Count wars where player got 0-2 stars total (poor performance)
-            if (p.stars <= 2 && p.attacks_count >= 1) {
+            // Count wars where player got 0 stars (poor performance)
+            if (p.stars === 0 && p.attacks_count >= 1) {
+                existing.zeroStarCount += 1
                 existing.oneStarCount += 1
+                existing.worstDestructionSum += p.destruction || 0
+                existing.worstDestructionCount += 1
+            }
+            // Count wars where player got 1-2 stars total (poor performance)
+            else if (p.stars >= 1 && p.stars <= 2 && p.attacks_count >= 1) {
+                existing.oneStarCount += 1
+                existing.worstDestructionSum += p.destruction || 0
+                existing.worstDestructionCount += 1
             }
 
             playerMap.set(p.player_tag, existing)
@@ -200,10 +217,13 @@ export function useLeaderboardStats(type: LeaderboardType) {
             playerTag: string
             playerName: string
             perfectCount: number
-            oneStarCount: number
+            zeroStarCount: number    // 0-star attacks
+            oneStarCount: number     // 0-star + 1-star combined
             totalStars: number
             totalAttacks: number
             leaguesPlayed: number
+            worstDestructionSum: number  // Sum of destruction % for 0-1 star attacks
+            worstDestructionCount: number // Count for averaging
         }>()
 
         for (const p of participants) {
@@ -211,21 +231,33 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 playerTag: p.player_tag,
                 playerName: p.player_name,
                 perfectCount: 0,
+                zeroStarCount: 0,
                 oneStarCount: 0,
                 totalStars: 0,
                 totalAttacks: 0,
-                leaguesPlayed: 0
+                leaguesPlayed: 0,
+                worstDestructionSum: 0,
+                worstDestructionCount: 0
             }
 
             existing.totalStars += p.total_stars || 0
             existing.totalAttacks += p.attacks_used || 0
             existing.leaguesPlayed += 1
 
-            // Parse daily_attacks to count 3-star (perfect) and 1-star days
+            // Parse daily_attacks to count stars and track destruction
             const dailyAttacks = p.daily_attacks || []
             for (const attack of dailyAttacks) {
                 if (attack.stars === 3) existing.perfectCount += 1
-                if (attack.stars === 1) existing.oneStarCount += 1
+                if (attack.stars === 0) {
+                    existing.zeroStarCount += 1
+                    existing.oneStarCount += 1
+                    existing.worstDestructionSum += attack.destruction || 0
+                    existing.worstDestructionCount += 1
+                } else if (attack.stars === 1) {
+                    existing.oneStarCount += 1
+                    existing.worstDestructionSum += attack.destruction || 0
+                    existing.worstDestructionCount += 1
+                }
             }
 
             playerMap.set(p.player_tag, existing)
@@ -246,16 +278,31 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 playerName: p.playerName,
                 perfectCount: p.perfectCount,
                 oneStarCount: p.oneStarCount,
+                zeroStarCount: p.zeroStarCount || 0,
                 totalStars: p.totalStars,
                 totalAttacks: p.totalAttacks,
-                averageStars: p.totalAttacks > 0 ? p.totalStars / p.totalAttacks : 0
+                averageStars: p.totalAttacks > 0 ? p.totalStars / p.totalAttacks : 0,
+                worstDestructionAvg: p.worstDestructionCount > 0
+                    ? p.worstDestructionSum / p.worstDestructionCount
+                    : 0
             }))
     })
 
     const oneStarLeaderboard = computed<LeaderboardEntry[]>(() => {
         return rawData.value
-            .filter(p => p.totalAttacks > 0)
-            .sort((a, b) => b.oneStarCount - a.oneStarCount || a.totalStars - b.totalStars)
+            .filter(p => p.totalAttacks > 0 && p.oneStarCount > 0)
+            .sort((a, b) => {
+                // First: sort by 0-star count descending (worst first)
+                if (b.zeroStarCount !== a.zeroStarCount) {
+                    return b.zeroStarCount - a.zeroStarCount
+                }
+                // Then: sort by total 0-1 star count descending
+                if (b.oneStarCount !== a.oneStarCount) {
+                    return b.oneStarCount - a.oneStarCount
+                }
+                // Finally: sort by total attacks descending (more attacks = more visible)
+                return b.totalAttacks - a.totalAttacks
+            })
             .slice(0, 10)
             .map((p, idx) => ({
                 rank: idx + 1,
@@ -263,9 +310,13 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 playerName: p.playerName,
                 perfectCount: p.perfectCount,
                 oneStarCount: p.oneStarCount,
+                zeroStarCount: p.zeroStarCount || 0,
                 totalStars: p.totalStars,
                 totalAttacks: p.totalAttacks,
-                averageStars: p.totalAttacks > 0 ? p.totalStars / p.totalAttacks : 0
+                averageStars: p.totalAttacks > 0 ? p.totalStars / p.totalAttacks : 0,
+                worstDestructionAvg: p.worstDestructionCount > 0
+                    ? p.worstDestructionSum / p.worstDestructionCount
+                    : 0
             }))
     })
 
@@ -274,8 +325,10 @@ export function useLeaderboardStats(type: LeaderboardType) {
 
     // Initial fetch
     const init = async () => {
-        await fetchClans()
-        await fetchData()
+        await Promise.all([
+            fetchClans(),
+            fetchData()
+        ])
     }
 
     return {

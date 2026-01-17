@@ -8,6 +8,7 @@ import UiSelect from '~/components/ui/Select.vue'
 import UiImageUpload from '~/components/ui/ImageUpload.vue'
 import UiGridCard from '~/components/ui/GridCard.vue'
 import UiImageModal from '~/components/ui/ImageModal.vue'
+import UiTextarea from '~/components/ui/Textarea.vue'
 
 // Default images mapping
 import th18Img from '~/assets/img/th/th18.jpeg'
@@ -39,7 +40,8 @@ const modalImageUrl = ref('')
 // Form state
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
-const newBase = ref({ title: '', th: 18, type: 'Guerre', link: '' })
+const newBase = ref({ title: '', description: '', th: 18, type: 'Guerre', link: '' })
+const errors = ref<Record<string, string>>({})
 
 // Filters
 const selectedTH = ref('Tout')
@@ -77,7 +79,14 @@ onMounted(async () => {
 })
 
 const handleAddBase = async () => {
-  if (!newBase.value.title || !newBase.value.link) return
+  errors.value = {}
+  
+  if (!newBase.value.title) errors.value.title = 'Le nom est obligatoire'
+  if (!newBase.value.description) errors.value.description = 'La description est obligatoire'
+  if (!newBase.value.link) errors.value.link = 'Le lien est obligatoire'
+  if (!imageFile.value) errors.value.image = 'L\'image est obligatoire'
+  
+  if (Object.keys(errors.value).length > 0) return
   
   isAdding.value = true
   try {
@@ -88,6 +97,7 @@ const handleAddBase = async () => {
 
     const { error } = await (supabase.from('base_link') as any).insert({
       name: newBase.value.title,
+      description: newBase.value.description,
       th: newBase.value.th,
       type: newBase.value.type.toLowerCase(),
       link: newBase.value.link,
@@ -108,7 +118,8 @@ const handleAddBase = async () => {
 
 const closeSidebar = () => {
   showSidebar.value = false
-  newBase.value = { title: '', th: 18, type: 'Guerre', link: '' }
+  newBase.value = { title: '', description: '', th: 18, type: 'Guerre', link: '' }
+  errors.value = {}
   imageFile.value = null
   imagePreview.value = null
 }
@@ -229,6 +240,7 @@ const filteredBases = computed(() => {
             :key="base.id"
             :image-url="base.image_url || thImages[base.th] || thImages[16]"
             :title="base.name || 'Base sans nom'"
+            :description="base.description"
             :date="base.created_at"
             :badges="[
               { label: `HDV ${base.th}` },
@@ -256,16 +268,22 @@ const filteredBases = computed(() => {
     <!-- Sidebar Form -->
     <AppSidebar :show="showSidebar" title="Ajouter une base" @close="closeSidebar">
       <form id="add-base-form" @submit.prevent="handleAddBase" class="space-y-5">
-        <UiInput v-model="newBase.title" label="Nom de la base" placeholder="ex: Base Anti-3 Guerre" required />
+        <UiInput v-model="newBase.title" label="Nom de la base" placeholder="ex: Base Anti-3 Guerre" :error="errors.title" />
+        
+        <UiTextarea 
+          v-model="newBase.description" 
+          label="Description" 
+          placeholder="Détails de la base..." 
+          :error="errors.description" 
+        />
         
         <div class="grid grid-cols-2 gap-4">
           <UiSelect v-model="newBase.th" label="HDV" :options="[18, 17, 16]" />
           <UiSelect v-model="newBase.type" label="Type" :options="types.filter(t => t !== 'Tout')" />
         </div>
 
-        <UiInput v-model="newBase.link" label="Lien de la base" placeholder="https://link.clashofclans.com/..." required />
-
-        <UiImageUpload v-model="imageFile" :preview="imagePreview" @update:preview="imagePreview = $event" />
+        <UiInput v-model="newBase.link" label="Lien de la base" placeholder="https://link.clashofclans.com/..." :error="errors.link" />
+        <UiImageUpload v-model="imageFile" :preview="imagePreview" @update:preview="imagePreview = $event" :error="errors.image" />
       </form>
 
       <template #footer>

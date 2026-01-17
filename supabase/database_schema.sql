@@ -9,6 +9,7 @@ CREATE TABLE public.base_link (
   link character varying,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   image_url character varying,
+  description text,
   CONSTRAINT base_link_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.cron_logs (
@@ -64,6 +65,9 @@ CREATE TABLE public.league_participants (
   daily_attacks jsonb DEFAULT '[]'::jsonb,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  defense_stars integer,
+  defense_destruction double precision,
+  defense_attacker_tag text,
   CONSTRAINT league_participants_pkey PRIMARY KEY (id),
   CONSTRAINT league_participants_league_history_id_fkey FOREIGN KEY (league_history_id) REFERENCES public.league_history(id)
 );
