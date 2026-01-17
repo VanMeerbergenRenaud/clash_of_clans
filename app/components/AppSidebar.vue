@@ -14,7 +14,8 @@ import {
   Bell,
   Settings,
   CircleUser,
-  MessageCircle
+  MessageCircle,
+  X
 } from 'lucide-vue-next'
 
 const { isExpanded, isMobileOpen, closeMobileSidebar } = useSidebar()
@@ -83,20 +84,20 @@ const toggleUserMenu = (e: Event) => {
     ></div>
 
     <!-- Sidebar Container -->
-    <aside 
-      class="fixed lg:sticky top-0 left-0 z-30 h-screen bg-slate-50 border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col"
+    <aside
+      class="fixed lg:sticky top-0 left-0 z-50 h-screen bg-slate-50 border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col"
       :class="[
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         isExpanded ? 'lg:w-[260px]' : 'lg:w-[70px]',
-        'w-[260px]'
+        'w-full'
       ]"
     >
       <!-- App Header / Logo -->
-      <div class="h-16 flex items-center px-4 border-b border-slate-200/50">
+      <div class="h-16 flex items-center px-4 border-b border-slate-200/50 justify-between gap-2">
         <a href="/" 
-           class="flex items-center gap-2 w-full hover:bg-slate-100 rounded-lg transition-colors"
+           class="flex items-center gap-2 hover:bg-slate-100 rounded-lg transition-colors overflow-hidden"
            :class="[
-             isExpanded ? 'p-2' : 'p-1',
+             isExpanded ? 'p-2 flex-1' : 'p-1',
            ]"
         >
           <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600 text-white shrink-0 shadow-sm shadow-indigo-200">
@@ -105,25 +106,37 @@ const toggleUserMenu = (e: Event) => {
           </div>
           <div 
             class="flex flex-col items-start overflow-hidden transition-all duration-300"
-             :class="isExpanded ? 'opacity-100 w-auto ml-1' : 'opacity-0 w-0 -ml-2 pointer-events-none lg:hidden'"
+             :class="(isExpanded || isMobileOpen) ? 'opacity-100 w-auto ml-1' : 'opacity-0 w-0 -ml-2 pointer-events-none lg:hidden'"
           >
             <span class="font-semibold text-slate-900 leading-none tracking-tight">{{ appName }}</span>
             <span class="text-xs text-slate-500 mt-1">Créé par PaDaWaN</span>
           </div>
         </a>
+
+        <!-- Close Button (Mobile Only) -->
+        <button 
+          v-if="isMobileOpen"
+          @click="closeMobileSidebar"
+          class="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+        >
+          <X class="w-5 h-5" />
+        </button>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar space-y-6">
+      <nav 
+        class="flex-1 py-6 px-3 custom-scrollbar space-y-6"
+        :class="isExpanded ? 'overflow-y-auto' : 'overflow-visible'"
+      >
         <div v-for="(group, idx) in navGroups" :key="idx">
           <h3 
-            v-if="isExpanded && group.title"
+            v-if="(isExpanded || isMobileOpen) && group.title"
             class="px-2 mb-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider transition-opacity duration-300"
           >
             {{ group.title }}
           </h3>
            <!-- Separator for collapsed state instead of title -->
-          <div v-else-if="!isExpanded && group.title" class="my-4 border-t border-slate-200 mx-2"></div>
+          <div v-else-if="!isExpanded && !isMobileOpen && group.title" class="my-4 border-t border-slate-200 mx-2"></div>
 
           <ul class="space-y-1">
             <li v-for="link in group.items" :key="link.path">
@@ -131,7 +144,7 @@ const toggleUserMenu = (e: Event) => {
                 :to="link.path"
                 class="flex items-center gap-3 rounded-md transition-all duration-200 group relative"
                 :class="[
-                  isExpanded ? 'px-3 py-2' : 'justify-center p-2',
+                  (isExpanded || isMobileOpen) ? 'px-3 py-2' : 'justify-center p-2',
                   'hover:bg-slate-200/50 text-slate-600 hover:text-slate-900'
                 ]"
                 active-class="bg-slate-200 text-slate-900 font-medium"
@@ -144,14 +157,14 @@ const toggleUserMenu = (e: Event) => {
                 
                 <span 
                   class="text-sm transition-all duration-300 origin-left whitespace-nowrap"
-                  :class="isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 w-0 overflow-hidden lg:hidden'"
+                  :class="(isExpanded || isMobileOpen) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 w-0 overflow-hidden lg:hidden'"
                 >
                   {{ link.name }}
                 </span>
 
                  <!-- Tooltip for collapsed state -->
                 <div 
-                  v-if="!isExpanded"
+                  v-if="!isExpanded && !isMobileOpen"
                   class="hidden lg:block absolute left-full ml-2 px-2 py-1 bg-slate-900 text-slate-50 text-xs rounded shadow-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50 animate-in fade-in slide-in-from-left-1"
                 >
                   {{ link.name }}
@@ -179,7 +192,7 @@ const toggleUserMenu = (e: Event) => {
           <div 
             v-if="isUserMenuOpen"
             class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-w-[220px]"
-            :class="isExpanded ? '' : 'left-full ml-2 bottom-0'" 
+            :class="(isExpanded || isMobileOpen) ? '' : 'left-full ml-2 bottom-0'" 
           >
              <!-- Menu Items -->
              <div class="p-1">
@@ -208,7 +221,7 @@ const toggleUserMenu = (e: Event) => {
         <button 
           class="w-full flex items-center gap-3 rounded-lg hover:bg-slate-200/50 transition-colors p-2 cursor-pointer group outline-none"
           :class="[
-            isExpanded ? '' : 'justify-center',
+            (isExpanded || isMobileOpen) ? '' : 'justify-center',
             isUserMenuOpen ? 'bg-slate-200/50' : ''
           ]"
           @click="toggleUserMenu"
@@ -220,14 +233,14 @@ const toggleUserMenu = (e: Event) => {
           
           <div 
             class="flex flex-col items-start overflow-hidden transition-all duration-300 text-left"
-            :class="isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 pointer-events-none lg:hidden'"
+            :class="(isExpanded || isMobileOpen) ? 'opacity-100 w-auto' : 'opacity-0 w-0 pointer-events-none lg:hidden'"
           >
             <span class="font-medium text-sm text-slate-900 leading-none truncate w-32">{{ user.name }}</span>
             <span class="text-xs text-slate-500 truncate w-32">{{ user.email }}</span>
           </div>
            <ChevronsUpDown 
              class="ml-auto w-4 h-4 text-slate-400 shrink-0 transition-opacity duration-300 group-hover:text-slate-600" 
-             :class="isExpanded ? 'opacity-100' : 'opacity-0 lg:hidden'"
+             :class="(isExpanded || isMobileOpen) ? 'opacity-100' : 'opacity-0 lg:hidden'"
           />
         </button>
       </div>

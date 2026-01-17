@@ -7,7 +7,8 @@ export const useSidebar = () => {
     })
 
     // Mobile sidebar state (not persisted)
-    const isMobileOpen = ref(false)
+    // Mobile sidebar state (not persisted)
+    const isMobileOpen = useState('mobile-sidebar-open', () => false)
 
     const toggleSidebar = () => {
         isExpanded.value = !isExpanded.value
