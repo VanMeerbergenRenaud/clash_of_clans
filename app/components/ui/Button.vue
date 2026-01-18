@@ -27,7 +27,7 @@ const variants = {
 <template>
   <button
     :class="[
-      'inline-flex px-3 py-2 items-center justify-center text-xs md:text-sm font-semibold rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
+      'inline-flex px-3 py-2 items-center justify-center text-sm font-semibold rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
       variants[variant],
       block ? 'w-full' : ''
     ]"

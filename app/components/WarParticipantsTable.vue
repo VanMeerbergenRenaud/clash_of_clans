@@ -145,7 +145,7 @@ const sortedParticipants = computed(() => {
                             <span class="text-amber-400">★</span>
                          </span>
                       </td>
-                      <td class="px-4 py-3 pr-12 text-right font-medium text-slate-600">
+                      <td class="px-4 py-3 text-right font-medium text-slate-600">
                          {{ member.avgDestruction.toFixed(0) }}%
                       </td>
                    </tr>

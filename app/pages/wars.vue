@@ -421,7 +421,7 @@ onMounted(() => {
 
                         <!-- VS / Score Center -->
                         <div class="shrink-0 flex flex-col items-center gap-4 px-4 py-2">
-                            <div class="flex items-center gap-8 md:gap-10">
+                            <div class="flex items-center gap-8 md:gap-4 lg:gap-10">
                                 <div class="text-center">
                                    <span class="block text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-none">{{ currentWar.clan.stars }}</span>
                                    <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1 block">Étoiles</span>
@@ -673,7 +673,7 @@ onMounted(() => {
                     </div>
                     <div class="flex items-center gap-1.5 text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-500">
                       <Users class="w-3 h-3" />
-                      <span class="font-bold">{{ selectedWarHistory?.team_size }}v{{ selectedWarHistory?.team_size }}</span>
+                      <span class="font-bold">{{ selectedWarHistory?.team_size }} vs {{ selectedWarHistory?.team_size }}</span>
                     </div>
                   </div>
                   <button @click="closeWarModal" class="p-2 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">

@@ -754,7 +754,7 @@ onMounted(() => {
                          </div>
                          <span class="text-sm font-bold text-amber-600">{{ leagueSessionStats.best.filter(p => p.isPerfect).length }}</span>
                       </div>
-                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                      <div class="px-4 py-2 space-y-2 max-h-100 overflow-y-auto min-h-[250px]">
                          <div v-if="leagueSessionStats.best.length > 0">
                             <div v-for="p in leagueSessionStats.best" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-amber-200/20 last:border-0">
                                <div class="flex items-center gap-3">
@@ -790,7 +790,7 @@ onMounted(() => {
                          </div>
                          <span class="text-sm font-bold text-red-500">{{ leagueSessionStats.missing.length }}</span>
                       </div>
-                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                      <div class="px-4 py-2 space-y-2 max-h-100 overflow-y-auto min-h-[250px]">
                          <div v-if="leagueSessionStats.missing.length > 0">
                             <div v-for="p in leagueSessionStats.missing" :key="p.player_tag" class="flex items-center justify-between py-2">
                                <div class="flex items-center gap-3">
@@ -815,23 +815,18 @@ onMounted(() => {
                          </div>
                          <span class="text-xs font-medium text-indigo-400 bg-indigo-100 px-2 py-0.5 rounded-full" v-if="leagueSessionStats.bestDefenses.length > 0">Top {{ leagueSessionStats.bestDefenses.length }}</span>
                       </div>
-                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                      <div class="px-4 py-2 space-y-2 max-h-100 overflow-y-auto min-h-[250px]">
                          <div v-if="leagueSessionStats.bestDefenses.length > 0">
                             <div v-for="p in leagueSessionStats.bestDefenses" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-indigo-200/20 last:border-0">
-                               <div class="flex flex-col">
-                                  <span class="font-medium text-slate-700 text-sm">{{ p.player_name }}</span>
-                                  <span class="text-[10px] text-slate-400" v-if="p.bestOpponentAttack?.attackerName">
-                                     vs {{ p.bestOpponentAttack.attackerName }}
-                                  </span>
-                               </div>
-                               <div class="flex items-center gap-2" v-if="p.bestOpponentAttack">
-                                  <span class="text-xs font-semibold px-2 py-0.5 rounded"
-                                          :class="p.bestOpponentAttack.stars === 0 ? 'text-indigo-600 bg-indigo-100' : (p.bestOpponentAttack.stars === 1 ? 'text-indigo-500 bg-indigo-50' : 'text-slate-500 bg-slate-100')">
-                                     {{ p.bestOpponentAttack.stars }}★
-                                  </span>
-                                  <span class="text-xs font-medium text-slate-500">{{ p.bestOpponentAttack.destructionPercentage?.toFixed(0) }}%</span>
-                               </div>
-                            </div>
+                                <span class="font-medium text-slate-700 text-sm">{{ p.player_name }}</span>
+                                <div class="flex items-center gap-2" v-if="p.bestOpponentAttack">
+                                   <span class="text-xs font-semibold px-2 py-0.5 rounded"
+                                           :class="p.bestOpponentAttack.stars === 0 ? 'text-indigo-600 bg-indigo-100' : (p.bestOpponentAttack.stars === 1 ? 'text-indigo-500 bg-indigo-50' : 'text-slate-500 bg-slate-100')">
+                                      {{ p.bestOpponentAttack.stars }}★
+                                   </span>
+                                   <span class="text-xs font-medium text-slate-500">{{ p.bestOpponentAttack.destructionPercentage?.toFixed(0) }}%</span>
+                                </div>
+                             </div>
                          </div>
                          <div v-else class="py-6 text-center text-slate-400 text-xs">
                             Données de défense non disponibles
@@ -848,20 +843,19 @@ onMounted(() => {
                          </div>
                          <span class="text-sm font-bold text-orange-500">{{ leagueSessionStats.struggling.length }}</span>
                       </div>
-                      <div class="px-4 py-2 space-y-2 max-h-120 overflow-y-auto">
+                      <div class="px-4 py-2 space-y-2 max-h-100 overflow-y-auto min-h-[250px]">
                          <div v-if="leagueSessionStats.struggling.length > 0">
-                            <div v-for="p in leagueSessionStats.struggling" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-orange-200/20 last:border-0">
-                               <div class="flex items-center gap-3">
-                                  <span class="text-xs font-medium text-slate-400 w-6">{{ p.map_position }}</span>
-                                  <span class="font-medium text-slate-700 text-sm">{{ p.player_name }}</span>
-                               </div>
-                               <div class="flex gap-1">
-                                  <span v-for="(atk, idx) in p.lowStarAttacks" :key="idx" 
-                                        class="text-xs font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">
-                                     {{ atk.stars }}★
-                                  </span>
-                               </div>
-                            </div>
+                             <div v-for="p in leagueSessionStats.struggling" :key="p.player_tag" class="flex items-center justify-between py-2 border-b border-orange-200/20 last:border-0">
+                                <span class="font-medium text-slate-700 text-sm">{{ p.player_name }}</span>
+                                <div class="flex items-center gap-2">
+                                   <template v-for="(atk, idx) in p.lowStarAttacks" :key="idx">
+                                      <span class="text-xs font-semibold text-orange-500 bg-orange-100 px-2 py-0.5 rounded">
+                                         {{ atk.stars }}★
+                                      </span>
+                                      <span class="text-xs font-medium text-slate-500">{{ atk.destructionPercentage }}%</span>
+                                   </template>
+                                </div>
+                             </div>
                          </div>
                          <div v-else class="py-6 text-center text-slate-400 text-xs">
                             Aucun échec pour le moment
