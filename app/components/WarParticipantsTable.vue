@@ -72,7 +72,8 @@ const sortedParticipants = computed(() => {
           <span class="text-xs font-medium text-slate-400">{{ participants.length }} joueurs</span>
        </div>
        
-       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+       <!-- Desktop Table View -->
+       <div class="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div class="overflow-x-auto">
              <table class="w-full text-sm">
                 <thead>
@@ -124,7 +125,7 @@ const sortedParticipants = computed(() => {
                          <span class="font-medium text-slate-900">{{ member.name }}</span>
                       </td>
                       <td class="px-4 py-3 text-center">
-                         <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{{ member.townHallLevel }}</span>
+                         <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">HDV {{ member.townHallLevel }}</span>
                       </td>
                       <td class="px-4 py-3 text-center">
                          <div class="flex justify-center gap-1">
@@ -150,6 +151,45 @@ const sortedParticipants = computed(() => {
                    </tr>
                 </tbody>
              </table>
+          </div>
+       </div>
+
+       <!-- Mobile Card View -->
+       <div class="md:hidden space-y-3">
+          <div v-for="member in sortedParticipants" :key="member.tag" class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+             <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-3">
+                   <span class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                      {{ member.mapPosition }}
+                   </span>
+                   <div>
+                      <div class="font-bold text-slate-900 text-sm">{{ member.name }}</div>
+                      <div class="text-[10px] text-slate-400 uppercase font-medium">HDV {{ member.townHallLevel }}</div>
+                   </div>
+                </div>
+                <div class="text-right">
+                   <div class="flex items-center gap-1 justify-end">
+                      <span class="text-lg font-black text-slate-900 leading-none">{{ member.totalStars }}</span>
+                      <span class="text-amber-400 text-xs">★</span>
+                   </div>
+                   <div class="text-xs font-medium text-slate-400">{{ member.avgDestruction.toFixed(0) }}%</div>
+                </div>
+             </div>
+             
+             <!-- Attacks -->
+             <div class="flex items-center justify-between pt-3 border-t border-slate-50">
+                <span class="text-xs font-medium text-slate-400">Attaques</span>
+                <div class="flex gap-1.5">
+                   <div v-for="i in 2" :key="i" class="w-3 h-3 rounded-full"
+                      :class="{
+                        'bg-green-500': member.attacks && member.attacks[i-1] && member.attacks[i-1].stars === 3,
+                        'bg-amber-500': member.attacks && member.attacks[i-1] && member.attacks[i-1].stars === 2,
+                        'bg-red-400': member.attacks && member.attacks[i-1] && member.attacks[i-1].stars <= 1,
+                        'bg-slate-200': !member.attacks || !member.attacks[i-1]
+                      }">
+                   </div>
+                </div>
+             </div>
           </div>
        </div>
     </div>

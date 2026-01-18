@@ -256,7 +256,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-8 pb-32">
+  <div class="space-y-8 max-sm:pb-8">
     
     <!-- HEADER: Title, Clan Selector & View Switcher -->
     <div class="flex flex-col gap-5">
@@ -269,7 +269,7 @@ onMounted(() => {
              Guerres
           </h1>
 
-          <div class="flex items-center gap-3">
+          <div class="flex flex-wrap items-center gap-3">
             <!-- Clan Selector Dropdown -->
             <div class="relative">
               <select 
@@ -521,7 +521,7 @@ onMounted(() => {
       <div v-if="viewMode === 'results'" key="results" class="space-y-6">
         
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between">
           <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Trophy class="w-5 h-5 text-amber-500" />
             Historique des guerres
@@ -661,7 +661,7 @@ onMounted(() => {
               <div class="bg-white border-b border-slate-100">
                 <!-- Top bar with result, date and close button -->
                 <div class="px-6 py-3 bg-slate-50 flex items-center justify-between">
-                  <div class="flex items-center gap-3">
+                  <div class="flex flex-wrap items-center gap-3">
                     <span class="text-xs font-bold uppercase tracking-wider" 
                           :class="selectedWarHistory?.result === 'win' ? 'text-green-600' : selectedWarHistory?.result === 'lose' ? 'text-red-600' : 'text-slate-500'">
                       {{ selectedWarHistory?.result === 'win' ? 'Victoire' : selectedWarHistory?.result === 'lose' ? 'Défaite' : 'Nul' }}

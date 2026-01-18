@@ -293,7 +293,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-8 pb-32">
+  <div class="space-y-8 max-sm:pb-8">
     
     <!-- HEADER -->
     <div class="flex flex-col gap-5">
@@ -305,7 +305,7 @@ onMounted(() => {
           Ligues de Clan
         </h1>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
           <!-- Clan Selector -->
           <div class="relative">
             <select v-model="selectedClanTag" class="appearance-none bg-white border border-slate-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-slate-900 cursor-pointer hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all min-w-[160px]">
@@ -351,7 +351,7 @@ onMounted(() => {
                   <div class="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-2">Ligue de Guerre - Saison {{ leagueGroup.season }}</div>
                   <div class="flex items-center gap-4 justify-center md:justify-start">
                     <LeagueBadge :name="leagueHistory[0]?.league_name" size="lg" />
-                    <h2 class="text-3xl lg:text-4xl font-black">{{ selectedClan?.name }}</h2>
+                    <h2 class="text-xl md:text-3xl lg:text-4xl font-black truncate max-w-[200px] md:max-w-none">{{ selectedClan?.name }}</h2>
                   </div>
                   <div class="flex items-center gap-4 mt-4 justify-center md:justify-start">
                     <div class="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-tighter">
@@ -382,7 +382,9 @@ onMounted(() => {
                  <h3 class="font-bold flex items-center gap-2"><ListOrdered class="w-4 h-4 text-indigo-500" /> Classement du groupe</h3>
                  <span class="text-xs text-slate-400">8 Clans</span>
                </div>
-               <div class="overflow-x-auto">
+               
+               <!-- Desktop Table -->
+               <div class="hidden md:block overflow-x-auto">
                  <table class="w-full text-sm">
                    <thead class="bg-slate-50 text-slate-500 font-semibold">
                      <tr>
@@ -413,6 +415,29 @@ onMounted(() => {
                      </tr>
                    </tbody>
                  </table>
+               </div>
+
+               <!-- Mobile List -->
+               <div class="md:hidden divide-y divide-slate-100">
+                  <div v-for="(c, idx) in leagueGroup.clans" :key="c.tag" class="p-4 flex items-center gap-4" :class="c.tag === selectedClanTag ? 'bg-slate-50' : ''">
+                     <span class="text-sm font-bold text-slate-400 w-4">{{ Number(idx) + 1 }}</span>
+                     
+                     <div class="w-10 h-10 shrink-0 bg-white rounded-lg border border-slate-100 flex items-center justify-center overflow-hidden">
+                        <img v-if="c.badgeUrls?.small" :src="c.badgeUrls.small" :alt="c.name" class="w-full h-full object-contain p-1" />
+                        <span v-else class="font-bold text-slate-300">{{ c.name?.charAt(0) }}</span>
+                     </div>
+
+                     <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                           <h4 class="font-bold text-slate-900 truncate" :class="c.tag === selectedClanTag ? 'text-indigo-600' : ''">{{ c.name }}</h4>
+                           <span v-if="c.tag === selectedClanTag" class="text-[9px] bg-indigo-50 text-indigo-500 border border-indigo-100 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Moi</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                           <span class="flex items-center gap-1 font-medium"><StarIcon class="w-3 h-3 text-slate-300" /> --</span>
+                           <span class="flex items-center gap-1 font-medium">--%</span>
+                        </div>
+                     </div>
+                  </div>
                </div>
             </div>
 
@@ -468,7 +493,7 @@ onMounted(() => {
       <!-- VIEW: RESULTS (History) -->
       <Transition enter-active-class="transition duration-300" enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
         <div v-if="viewMode === 'results'" class="space-y-6">
-          <div class="flex items-center justify-between px-2">
+          <div class="flex flex-wrap items-center justify-between px-2 lg:px-4">
             <h2 class="text-lg font-bold flex items-center gap-2 text-slate-900"><Trophy class="w-5 h-5 text-amber-500" /> Historique des saisons</h2>
             <span class="text-xs text-slate-400 font-medium">{{ leagueHistory.length }} saisons enregistrées</span>
           </div>
@@ -541,7 +566,7 @@ onMounted(() => {
           
           <!-- Modal Content -->
           <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95 translate-y-8" enter-to-class="opacity-100 scale-100 translate-y-0" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100 translate-y-0" leave-to-class="opacity-0 scale-95 translate-y-8">
-          <div class="relative bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
+          <div class="relative bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
              
              <!-- Modal Header Bar -->
              <div class="px-6 py-4 flex items-center justify-between border-b border-slate-100">
@@ -567,25 +592,25 @@ onMounted(() => {
              </div>
 
              <!-- Score Summary (War-style layout) -->
-             <div class="px-8 py-6 border-b border-slate-100">
-                <div class="flex items-center justify-between">
+             <div class="px-6 py-6 border-b border-slate-100">
+                <div class="flex flex-col md:flex-row items-center md:justify-between gap-6 md:gap-8">
                    <!-- Our Clan -->
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 w-full md:w-auto">
                        <div class="w-16 h-16 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border border-slate-100">
                           <img v-if="selectedLeagueClan?.badge_url || selectedClan?.badge_url" :src="selectedLeagueClan?.badge_url || selectedClan?.badge_url" :alt="selectedClan?.name" class="w-full h-full object-contain p-2" />
                           <span v-else class="text-2xl font-black text-slate-300">{{ selectedClan?.name?.charAt(0) }}</span>
                        </div>
                        <div>
-                          <div class="font-black text-slate-900 text-xl">{{ selectedClan?.name }}</div>
+                          <div class="font-black text-slate-900 text-xl truncate max-w-[200px]">{{ selectedClan?.name }}</div>
                           <div class="text-xs font-mono text-slate-400">{{ selectedClanTag }}</div>
                        </div>
                     </div>
 
                    <!-- Stats Center -->
-                  <div class="flex items-center gap-10">
+                  <div class="flex items-center justify-between w-full md:w-auto md:gap-10 border-t md:border-t-0 border-slate-50 pt-4 md:pt-0">
 
                     <!-- Position -->
-                    <div class="flex flex-col items-center text-center space-y-1">
+                    <div class="flex flex-col items-center text-center space-y-1 flex-1 md:flex-none">
                       <div class="text-lg font-extrabold tracking-tight text-slate-900">
                         #{{ selectedLeagueHistory?.final_rank }}
                       </div>
@@ -593,8 +618,11 @@ onMounted(() => {
                         Position
                       </div>
                     </div>
+                    
+                    <div class="w-px h-8 bg-slate-100 md:hidden"></div>
+
                     <!-- Total Stars -->
-                    <div class="flex flex-col items-center text-center space-y-1">
+                    <div class="flex flex-col items-center text-center space-y-1 flex-1 md:flex-none">
                       <div class="flex items-center gap-1">
                         <span class="text-lg font-extrabold tracking-tight text-slate-900">
                           {{ selectedLeagueHistory?.total_stars }}
@@ -605,8 +633,11 @@ onMounted(() => {
                         Étoiles
                       </div>
                     </div>
+
+                    <div class="w-px h-8 bg-slate-100 md:hidden"></div>
+
                     <!-- Destruction -->
-                    <div class="flex flex-col items-center text-center space-y-1">
+                    <div class="flex flex-col items-center text-center space-y-1 flex-1 md:flex-none">
                       <div class="text-lg font-extrabold tracking-tight text-slate-900">
                         {{ selectedLeagueHistory?.total_destruction }}%
                       </div>
@@ -618,7 +649,7 @@ onMounted(() => {
 
 
                    <!-- Season Info -->
-                   <div class="text-right">
+                   <div class="hidden md:block text-right">
                       <div class="font-bold text-slate-900">7 Rounds</div>
                       <div class="text-xs text-slate-400">{{ leagueParticipants.length }} participants</div>
                    </div>
@@ -626,7 +657,7 @@ onMounted(() => {
              </div>
 
              <!-- Modal Scrollable Content -->
-             <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+             <div class="p-6 space-y-6 custom-scrollbar flex-1">
                 
                 <!-- Group Rankings (Collapsible) -->
                 <div v-if="leagueClans.length > 0" class="rounded-xl border border-slate-200 overflow-hidden">
@@ -850,7 +881,9 @@ onMounted(() => {
                    </div>
 
                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <div class="overflow-x-auto">
+                      
+                      <!-- Desktop Table -->
+                      <div class="hidden md:block overflow-x-auto">
                          <table class="w-full text-sm">
                             <thead>
                                <tr class="bg-slate-50 text-slate-500 text-xs font-medium border-b border-slate-100">
@@ -910,6 +943,37 @@ onMounted(() => {
                                </tr>
                             </tbody>
                          </table>
+                      </div>
+
+                      <!-- Mobile Card View -->
+                      <div class="md:hidden divide-y divide-slate-100">
+                         <div v-for="p in sortedParticipants" :key="p.player_tag" class="p-4 bg-white">
+                            <div class="flex items-start justify-between mb-3">
+                               <div class="flex items-center gap-3">
+                                  <span class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                                     {{ p.map_position }}
+                                  </span>
+                                  <div>
+                                     <div class="font-bold text-slate-900 text-sm">{{ p.player_name }}</div>
+                                     <div class="text-[10px] text-slate-400 uppercase font-medium">HDV {{ p.town_hall_level }}</div>
+                                  </div>
+                               </div>
+                               <div class="text-right">
+                                  <div class="flex items-center gap-1 justify-end">
+                                     <span class="text-lg font-black text-slate-900 leading-none">{{ p.total_stars }}</span>
+                                     <span class="text-amber-400 text-xs">★</span>
+                                  </div>
+                                  <div class="text-xs font-medium text-slate-400">{{ p.total_destruction }}%</div>
+                               </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between pt-2 border-t border-slate-50">
+                               <span class="text-xs font-medium text-slate-400">Progression</span>
+                               <span class="text-xs font-bold px-2 py-0.5 rounded" :class="p.attacks_used === 7 ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'">
+                                  {{ p.attacks_used }}/7 attaques
+                               </span>
+                            </div>
+                         </div>
                       </div>
                    </div>
                 </div>
