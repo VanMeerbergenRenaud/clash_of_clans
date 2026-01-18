@@ -106,21 +106,28 @@ const historyMembers = computed<WarParticipant[]>(() => {
          Let's fill dummy attacks for count.
       */
      
+     // Distribute stored stars and destruction across attacks
      const attacks: WarAttack[] = []
-     for (let i = 0; i < (p.attacks_count || 0); i++) {
-         attacks.push({
-             attackerTag: '',
-             defenderTag: '',
-             stars: 0, // Unknown individual stars. 
-             // Logic to distribute stars? 
-             // IF stars=6, count=2 -> [3,3]
-             // IF stars=3, count=1 -> [3]
-             // Else we might just show grey or generic.
-             // For now, let's leave stars 0 so they show red? Or better, we can't show the dots accurately.
-             // We'll trust the explicit `stars` column in the table component.
-             destructionPercentage: 0,
-             order: i
-         })
+     const attacksCount = p.attacks_count || 0
+     const totalStars = p.stars || 0
+     const totalDestruction = p.destruction || 0
+     
+     if (attacksCount > 0) {
+         // Smart distribution: if 6 stars with 2 attacks = 3+3, if 3 stars with 1 attack = 3, etc.
+         // For 2 attacks, divide evenly when possible, otherwise put remainder in first attack
+         const avgStarsPerAttack = Math.floor(totalStars / attacksCount)
+         const remainderStars = totalStars % attacksCount
+         const avgDestructionPerAttack = totalDestruction / attacksCount
+         
+         for (let i = 0; i < attacksCount; i++) {
+             attacks.push({
+                 attackerTag: '',
+                 defenderTag: '',
+                 stars: avgStarsPerAttack + (i < remainderStars ? 1 : 0),
+                 destructionPercentage: avgDestructionPerAttack,
+                 order: i
+             })
+         }
      }
 
      // IF we successfully added the defense columns
