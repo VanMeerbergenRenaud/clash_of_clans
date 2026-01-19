@@ -9,13 +9,14 @@ export interface LeaderboardEntry {
     rank: number
     playerTag: string
     playerName: string
-    perfectCount: number    // 6-star for wars, 3-star per day for leagues
-    oneStarCount: number    // 0-star + 1-star attacks combined
-    zeroStarCount: number   // 0-star attacks only
+    perfectCount: number      // Number of 3-star attacks (estimated from 6★ wars or counted from daily_attacks)
+    oneStarCount: number      // Number of attacks with ≤1 star (0-star + 1-star combined)
+    zeroStarCount: number     // Number of 0-star attacks only
     totalStars: number
     totalAttacks: number
     averageStars: number
     worstDestructionAvg: number  // Average destruction % for 0-1 star attacks (for sorting)
+    attacks?: any[]
 }
 
 export interface LeaderboardFilters {
@@ -109,7 +110,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
 
         // 2. Get participants for these wars
         const { data: participants }: { data: any[] | null } = await (supabase.from('war_participants') as any)
-            .select('player_tag, player_name, stars, attacks_count, war_id')
+            .select('player_tag, player_name, stars, attacks_count, war_id, attacks')
             .in('war_id', warIds)
 
         if (!participants) {
@@ -118,16 +119,25 @@ export function useLeaderboardStats(type: LeaderboardType) {
         }
 
         // 3. Aggregate stats per player
+        // Note: For wars, we estimate 3-star attacks based on total stars and attacks:
+        // - 6★ with 2 attacks = 2 perfect attacks (3★ + 3★)
+        // - 5★ with 2 attacks = 1 perfect attack (3★ + 2★)
+        // - 4★ with 2 attacks = 1 perfect attack minimum (3★ + 1★ or 2★ + 2★) - we estimate 1
+        // - 3★ with 1 attack = 1 perfect attack
+        // For one-star ranking, we count attacks that averaged ≤1 star:
+        // - 0★ with any attacks = all attacks were 0★ (worst)
+        // - 1★ with 1 attack = 1 attack at 1★
+        // - 2★ with 2 attacks = average 1★ per attack (can count as 2 poor attacks)
         const playerMap = new Map<string, {
             playerTag: string
             playerName: string
-            perfectCount: number
-            zeroStarCount: number    // 0-star attacks
-            oneStarCount: number     // 0-star + 1-star combined
+            perfectCount: number        // Estimated number of 3-star attacks
+            zeroStarCount: number       // Estimated number of 0-star attacks
+            oneStarCount: number        // Estimated number of ≤1 star attacks (0-star + 1-star)
             totalStars: number
             totalAttacks: number
             warsPlayed: number
-            worstDestructionSum: number  // Sum of destruction % for 0-1 star attacks
+            worstDestructionSum: number  // Sum of destruction % for poor attacks
             worstDestructionCount: number // Count for averaging
         }>()
 
@@ -149,23 +159,72 @@ export function useLeaderboardStats(type: LeaderboardType) {
             existing.totalAttacks += p.attacks_count || 0
             existing.warsPlayed += 1
 
-            // Perfect (6 stars) = 2 attacks with 3 stars each
-            if (p.stars === 6 && p.attacks_count === 2) {
-                existing.perfectCount += 1
-            }
+            // Note: For wars, we estimate 3-star attacks based on total stars and attacks if detailed data is missing.
+            // If we have 'attacks' array (new data), we use it for precise counting.
+            const stars = p.stars || 0
+            const attacksCount = p.attacks_count || 0
+            const attacks = p.attacks || []
 
-            // Count wars where player got 0 stars (poor performance)
-            if (p.stars === 0 && p.attacks_count >= 1) {
-                existing.zeroStarCount += 1
-                existing.oneStarCount += 1
-                existing.worstDestructionSum += p.destruction || 0
-                existing.worstDestructionCount += 1
+            // PRECISE CALCULATION (if detailed attacks data exists)
+            if (attacks.length > 0) {
+                for (const atk of attacks) {
+                    // Perfect counts
+                    if (atk.stars === 3) {
+                        existing.perfectCount += 1
+                    }
+
+                    // Poor attacks (≤1 star)
+                    if (atk.stars <= 1) {
+                        existing.oneStarCount += 1 // Count this attack
+                        existing.worstDestructionSum += atk.destructionPercentage || 0
+                        existing.worstDestructionCount += 1
+
+                        if (atk.stars === 0) {
+                            existing.zeroStarCount += 1
+                        }
+                    }
+                }
             }
-            // Count wars where player got 1-2 stars total (poor performance)
-            else if (p.stars >= 1 && p.stars <= 2 && p.attacks_count >= 1) {
-                existing.oneStarCount += 1
-                existing.worstDestructionSum += p.destruction || 0
-                existing.worstDestructionCount += 1
+            // FALLBACK ESTIMATION (for old data without detailed attacks)
+            else {
+                // Estimate number of 3-star attacks
+                if (attacksCount === 2) {
+                    if (stars === 6) {
+                        existing.perfectCount += 2  // 3★ + 3★
+                    } else if (stars >= 4 && stars <= 5) {
+                        existing.perfectCount += 1  // At least one 3★ attack
+                    }
+                } else if (attacksCount === 1 && stars === 3) {
+                    existing.perfectCount += 1
+                }
+
+                // Count poor attacks (≤1 star per attack)
+                if (attacksCount > 0) {
+                    if (stars === 0) {
+                        // All attacks were 0 stars (worst case)
+                        existing.zeroStarCount += attacksCount
+                        existing.oneStarCount += attacksCount
+                        existing.worstDestructionSum += p.destruction || 0
+                        existing.worstDestructionCount += attacksCount
+                    } else if (attacksCount === 2 && stars <= 2) {
+                        // 2 attacks with ≤2 total stars = average ≤1 star per attack
+                        if (stars === 1) {
+                            // Could be 1★ + 0★ - count 1 zero-star attack
+                            existing.zeroStarCount += 1
+                            existing.oneStarCount += 2
+                        } else if (stars === 2) {
+                            // Could be 1★ + 1★ or 2★ + 0★ - assume 1★ + 1★ (2 one-star attacks)
+                            existing.oneStarCount += 2
+                        }
+                        existing.worstDestructionSum += p.destruction || 0
+                        existing.worstDestructionCount += 2
+                    } else if (attacksCount === 1 && stars === 1) {
+                        // 1 attack with 1 star
+                        existing.oneStarCount += 1
+                        existing.worstDestructionSum += p.destruction || 0
+                        existing.worstDestructionCount += 1
+                    }
+                }
             }
 
             playerMap.set(p.player_tag, existing)

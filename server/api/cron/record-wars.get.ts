@@ -162,6 +162,7 @@ export default defineEventHandler(async (event) => {
                     stars: m.attacks ? m.attacks.reduce((acc: number, atk: any) => acc + atk.stars, 0) : 0,
                     destruction: m.attacks ? m.attacks.reduce((acc: number, atk: any) => acc + atk.destructionPercentage, 0) : 0,
                     attacks_count: m.attacks ? m.attacks.length : 0,
+                    attacks: m.attacks || [],
                     town_hall_level: m.townhallLevel,
                     map_position: m.mapPosition,
                     defense_stars: defense ? defense.stars : null,

@@ -139,6 +139,7 @@ CREATE TABLE public.war_participants (
   stars integer DEFAULT 0,
   destruction double precision DEFAULT 0,
   attacks_count integer DEFAULT 0,
+  attacks jsonb DEFAULT '[]'::jsonb,
   town_hall_level integer,
   map_position integer,
   defense_stars integer,

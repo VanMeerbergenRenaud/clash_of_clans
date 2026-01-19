@@ -122,7 +122,7 @@ const getRankClass = (rank: number) => {
     </div>
     
     <!-- Content -->
-    <div class="p-3 min-h-[250px] max-h-[400px] overflow-y-scroll grid items-center">
+    <div class="p-3 min-h-[250px] max-h-[400px] overflow-y-scroll grid items-start">
       <!-- Loading -->
       <div v-if="loading" class="py-8 text-center text-slate-400 text-sm">
         Chargement...
@@ -158,15 +158,22 @@ const getRankClass = (rank: number) => {
           
           <!-- Main Stat -->
           <div class="flex-shrink-0 text-right">
-            <p 
-              class="text-lg font-bold"
-              :class="activeTab === 'perfect' ? 'text-emerald-600' : 'text-red-600'"
-            >
-              {{ activeTab === 'perfect' ? entry.perfectCount : entry.oneStarCount }}
-            </p>
-            <p class="text-xs text-slate-400">
-              {{ activeTab === 'perfect' ? (type === 'war' ? '6★' : '3★') : '1★' }}
-            </p>
+            <template v-if="activeTab === 'perfect'">
+              <p class="text-lg font-bold text-emerald-600">
+                {{ entry.perfectCount }}
+              </p>
+              <p class="text-xs text-slate-400">3★</p>
+            </template>
+            <template v-else>
+              <p class="text-lg font-bold text-red-600">
+                {{ entry.oneStarCount }}
+              </p>
+              <p class="text-xs text-slate-400 flex gap-1 justify-end">
+                <span v-if="entry.zeroStarCount > 0" class="font-medium text-red-500">{{ entry.zeroStarCount }}x0★</span>
+                <span v-if="(entry.oneStarCount - entry.zeroStarCount) > 0">{{ entry.oneStarCount - entry.zeroStarCount }}x1★</span>
+                <span v-if="entry.oneStarCount === 0">≤1★</span>
+              </p>
+            </template>
           </div>
         </div>
       </div>
