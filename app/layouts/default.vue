@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { PanelLeft } from 'lucide-vue-next'
+import { PanelLeft, LogIn } from 'lucide-vue-next'
 
 const { isExpanded, toggleSidebar, toggleMobileSidebar } = useSidebar()
+const { isAuthenticated } = useUserRole()
 const route = useRoute()
 
 // Simple breadcrumb logic based on route path
@@ -64,6 +65,19 @@ const breadcrumbs = computed(() => {
                 <span v-if="index < breadcrumbs.length - 1" class="text-slate-400">/</span>
              </template>
           </nav>
+
+          <!-- Spacer -->
+          <div class="flex-1"></div>
+
+          <!-- Login Button (when not authenticated) -->
+          <NuxtLink 
+            v-if="!isAuthenticated"
+            to="/login"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
+          >
+            <LogIn class="w-4 h-4" />
+            Se connecter
+          </NuxtLink>
         </header>
 
         <!-- Page Content -->

@@ -106,14 +106,6 @@ CREATE TABLE public.players (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT players_pkey PRIMARY KEY (tag)
 );
-CREATE TABLE public.profiles (
-  id uuid NOT NULL,
-  username text UNIQUE,
-  user_type text DEFAULT 'viewer'::text CHECK (user_type = ANY (ARRAY['admin'::text, 'viewer'::text])),
-  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT profiles_pkey PRIMARY KEY (id),
-  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
-);
 CREATE TABLE public.strategies (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   title text NOT NULL,
@@ -133,6 +125,15 @@ CREATE TABLE public.tracked_clans (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   badge_url text,
   CONSTRAINT tracked_clans_pkey PRIMARY KEY (ordered)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL,
+  username text UNIQUE,
+  user_type text DEFAULT 'viewer'::text CHECK (user_type = ANY (ARRAY['super_admin'::text, 'admin'::text, 'editor'::text, 'viewer'::text])),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.war_history (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

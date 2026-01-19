@@ -16,17 +16,19 @@ import {
   CircleUser,
   MessageCircle,
   X,
-  Scroll
+  Scroll,
+  LogIn
 } from 'lucide-vue-next'
 
 const { isExpanded, isMobileOpen, closeMobileSidebar } = useSidebar()
+const { user, userProfile, isAuthenticated, canAccessInscriptions, logout } = useUserRole()
 const route = useRoute()
 
 // App Logo (using a placeholder icon since no file was provided)
 const appName = "CoC Manager"
 
-// Grouped Navigation
-const navGroups = [
+// Base navigation structure
+const baseNavGroups = [
   {
     title: '',
     items: [
@@ -36,7 +38,7 @@ const navGroups = [
   {
     title: 'Organisation',
     items: [
-      { name: 'Inscriptions', path: '/inscription', icon: Scroll },
+      { name: 'Inscriptions', path: '/inscription', icon: Scroll, requiresAdmin: true },
       { name: 'Ligues de clan', path: '/leagues', icon: Shield },
       { name: 'Guerres de clan', path: '/wars', icon: Swords },
     ]
@@ -50,12 +52,19 @@ const navGroups = [
   }
 ]
 
-// Mock User Data
-const user = {
-  name: 'PaDaWaN',
-  email: 'padawan.coc@example.com',
-  avatar: 'https://github.com/shadcn.png'
-}
+// Filtered navigation based on user role
+const navGroups = computed(() => {
+  return baseNavGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      // If item requires admin/editor access, check permission
+      if (item.requiresAdmin) {
+        return canAccessInscriptions.value
+      }
+      return true
+    })
+  })).filter(group => group.items.length > 0)
+})
 
 // User Menu State
 const isUserMenuOpen = ref(false)
@@ -73,6 +82,11 @@ onMounted(() => {
 const toggleUserMenu = (e: Event) => {
   e.stopPropagation() // Prevent immediate closing
   isUserMenuOpen.value = !isUserMenuOpen.value
+}
+
+const handleLogout = async () => {
+  isUserMenuOpen.value = false
+  await logout()
 }
 </script>
 
@@ -182,7 +196,7 @@ const toggleUserMenu = (e: Event) => {
         class="p-4 border-t border-slate-200/50 mt-auto relative" 
         ref="userMenuRef"
       >
-        <!-- Dropdown Menu -->
+        <!-- Dropdown Menu (only if authenticated) -->
         <transition
           enter-active-class="transition duration-100 ease-out"
           enter-from-class="transform scale-95 opacity-0"
@@ -192,25 +206,28 @@ const toggleUserMenu = (e: Event) => {
           leave-to-class="transform scale-95 opacity-0"
         >
           <div 
-            v-if="isUserMenuOpen"
+            v-if="isUserMenuOpen && isAuthenticated"
             class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-w-[220px] z-50"
           >
              <!-- Menu Items -->
              <div class="p-1">
                <a href="https://link.clashofclans.com/fr?action=OpenPlayerProfile&tag=PUQLYCR0" target="_blank" class="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 rounded-md transition-colors">
                    <CircleUser class="w-4 h-4 text-slate-500" />
-                   <span>Mon compte</span>
+                   <span>Compte du créateur</span>
                </a>
                <a href="mailto:padawan.coc@gmail.com" class="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 rounded-md transition-colors">
                    <MessageCircle class="w-4 h-4 text-slate-500" />
-                   <span>Me contacter</span>
+                   <span>Contacter le créateur</span>
                </a>
              </div>
 
              <div class="h-px bg-slate-100 my-1"></div>
 
              <div class="p-1">
-                <button class="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 rounded-md transition-colors group/logout">
+                <button 
+                  @click="handleLogout"
+                  class="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 rounded-md transition-colors group/logout"
+                >
                    <LogOut class="w-4 h-4 text-slate-500 group-hover/logout:text-slate-900" />
                    <span>Se déconnecter</span>
                 </button>
@@ -218,8 +235,9 @@ const toggleUserMenu = (e: Event) => {
           </div>
         </transition>
 
-        <!-- Profile Trigger -->
+        <!-- Profile Trigger (if authenticated) -->
         <button 
+          v-if="isAuthenticated"
           class="w-full flex items-center gap-3 rounded-lg hover:bg-slate-200/50 transition-colors p-2 cursor-pointer group outline-none"
           :class="[
             (isExpanded || isMobileOpen) ? '' : 'justify-center',
@@ -228,22 +246,37 @@ const toggleUserMenu = (e: Event) => {
           @click="toggleUserMenu"
         >
           <div class="w-8 h-8 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-200">
-             <div class="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-bold" v-if="!user.avatar">S</div>
-             <img v-else :src="user.avatar" alt="User" class="w-full h-full object-cover" />
+              <img src="/img/avatar.png" class="w-full h-full object-cover" alt="User Avatar" />
           </div>
           
           <div 
             class="flex flex-col items-start overflow-hidden transition-all duration-300 text-left"
             :class="(isExpanded || isMobileOpen) ? 'opacity-100 w-auto' : 'opacity-0 w-0 pointer-events-none lg:hidden'"
           >
-            <span class="font-medium text-sm text-slate-900 leading-none truncate w-32">{{ user.name }}</span>
-            <span class="text-xs text-slate-500 truncate w-32">{{ user.email }}</span>
+            <span class="font-medium text-sm text-slate-900 leading-none truncate w-32">{{ userProfile?.username || user?.email?.split('@')[0] || 'Utilisateur' }}</span>
+            <span class="text-xs text-slate-500 truncate w-32">{{ user?.email || '' }}</span>
           </div>
            <ChevronsUpDown 
              class="ml-auto w-4 h-4 text-slate-400 shrink-0 transition-opacity duration-300 group-hover:text-slate-600" 
              :class="(isExpanded || isMobileOpen) ? 'opacity-100' : 'opacity-0 lg:hidden'"
           />
         </button>
+
+        <!-- Login Button (if not authenticated) -->
+        <NuxtLink 
+          v-else
+          to="/login"
+          class="w-full flex items-center gap-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors p-2 cursor-pointer group"
+          :class="(isExpanded || isMobileOpen) ? '' : 'justify-center'"
+        >
+          <LogIn class="w-4 h-4 shrink-0" />
+          <span 
+            class="text-sm font-medium transition-all duration-300"
+            :class="(isExpanded || isMobileOpen) ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden lg:hidden'"
+          >
+            Se connecter
+          </span>
+        </NuxtLink>
       </div>
     </aside>
   </div>

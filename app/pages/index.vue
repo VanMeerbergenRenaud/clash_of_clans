@@ -9,6 +9,8 @@ definePageMeta({
   layout: 'default'
 })
 
+const { isViewer, canAccessInscriptions } = useUserRole()
+
 const supabase = useSupabaseClient()
 const clansInfo = ref<any[]>([])
 // We need a list of ALL members combined from all tracked clans
@@ -176,7 +178,7 @@ onMounted(() => {
       />
     </section>
     
-    <!-- War Planning / Organization Widget -->
+    <!-- War Planning / Organization Widget (visible to everyone) -->
     <section>
        <DashboardWarPlanner :initialmembers="planningMembers" v-if="!loading" />
        
