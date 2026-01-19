@@ -15,7 +15,8 @@ import {
   Settings,
   CircleUser,
   MessageCircle,
-  X
+  X,
+  Scroll
 } from 'lucide-vue-next'
 
 const { isExpanded, isMobileOpen, closeMobileSidebar } = useSidebar()
@@ -35,6 +36,7 @@ const navGroups = [
   {
     title: 'Organisation',
     items: [
+      { name: 'Inscription', path: '/inscription', icon: Scroll },
       { name: 'Ligues de clan', path: '/leagues', icon: Shield },
       { name: 'Guerres de clan', path: '/wars', icon: Swords },
     ]

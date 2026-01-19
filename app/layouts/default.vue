@@ -10,6 +10,7 @@ const breadcrumbs = computed(() => {
   if (path === '/') return ['Tableau de bord']
   
   const routeMap: Record<string, { category: string, name: string }> = {
+    'inscription': { category: 'Organisation', name: 'Inscription' },
     'leagues': { category: 'Organisation', name: 'Ligues de clan' },
     'wars': { category: 'Organisation', name: 'Guerres de clan' },
     'bases': { category: 'Communauté', name: 'Bases de défense' },
