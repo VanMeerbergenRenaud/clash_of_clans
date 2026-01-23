@@ -200,50 +200,60 @@ const getRankClass = (rank: number) => {
             {{ entry.rank }}
           </div>
           
-          <!-- Player Info -->
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-slate-800 truncate">{{ entry.playerName }}</p>
-            <p class="text-xs text-slate-400">
-              {{ entry.totalStars }} ⭐ · {{ entry.totalAttacks }} attaques
+          <!-- Player Info & Stats Container -->
+          <div class="flex flex-1 items-center lg:grid lg:grid-cols-[1fr,6.5rem,10rem] gap-4 min-w-4 overflow-hidden">
+            <!-- Name -->
+            <p class="text-sm font-medium text-slate-800 min-w-[6.5rem] truncate">
+              {{ entry.playerName }}
             </p>
-          </div>
-          
-          <!-- Star Breakdown Badges -->
-          <div class="flex gap-1 flex-shrink-0">
-            <span 
-              v-if="entry.perfectCount > 0"
-              class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-emerald-100 text-emerald-700"
-            >
-              {{ entry.perfectCount }}×3★
-            </span>
-            <span 
-              v-if="entry.twoStarCount > 0"
-              class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-100 text-amber-700"
-            >
-              {{ entry.twoStarCount }}×2★
-            </span>
-            <span 
-              v-if="entry.oneStarCount > 0"
-              class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-100 text-red-600"
-            >
-              {{ entry.oneStarCount }}×≤1★
-            </span>
+            
+            <!-- Global Stats (Stars & Attacks) -->
+            <div class="flex items-center gap-1 text-sm text-slate-500 whitespace-nowrap">
+              <span class="flex items-center">
+                {{ entry.totalStars }} <span class="inline ml-1">⭐</span>
+              </span>
+              <span class="flex items-center">
+                <span class="mx-1">·</span> {{ entry.totalAttacks }} <span class="inline ml-1">⚔️</span>
+              </span>
+            </div>
+
+            <!-- Star Breakdown Badges -->
+            <div class="hidden lg:grid grid-cols-3 gap-1.5 min-w-40">
+              <span 
+                v-if="entry.perfectCount > 0"
+                class="col-start-1 px-1.5 py-0.5 text-xs font-semibold rounded bg-emerald-100 text-emerald-700 w-fit justify-self-center"
+              >
+                {{ entry.perfectCount }}×3★
+              </span>
+              <span 
+                v-if="entry.twoStarCount > 0"
+                class="col-start-2 px-1.5 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-700 w-fit justify-self-center"
+              >
+                {{ entry.twoStarCount }}×2★
+              </span>
+              <span 
+                v-if="entry.oneStarCount > 0"
+                class="col-start-3 px-1.5 py-0.5 text-xs font-semibold rounded bg-red-100 text-red-600 w-fit justify-self-center"
+              >
+                {{ entry.oneStarCount }}×≤1★
+              </span>
+            </div>
           </div>
           
           <!-- Main Stat -->
-          <div class="flex-shrink-0 text-right min-w-[50px]">
+          <div class="flex-shrink-0 text-right min-w-6 lg:min-w-10 px-1">
             <template v-if="activeTab === 'perfect'">
-              <p class="text-lg font-bold text-emerald-600">
+              <p class="text-lg font-semibold text-emerald-600 leading-none">
                 {{ entry.perfectCount }}
               </p>
             </template>
             <template v-else>
-              <p class="text-lg font-bold text-red-600">
-                {{ entry.oneStarCount }}
-              </p>
-              <p class="text-xs text-slate-400 flex gap-1 justify-end">
-                <span v-if="entry.zeroStarCount > 0" class="font-medium text-red-500">{{ entry.zeroStarCount }}×0★</span>
-              </p>
+              <div class="flex items-center gap-2 justify-end">
+                <span v-if="entry.zeroStarCount > 0" class="text-[10px] font-medium text-red-500 whitespace-nowrap hidden sm:inline">{{ entry.zeroStarCount }}×0★</span>
+                <p class="text-lg font-semibold text-red-600 leading-none">
+                  {{ entry.oneStarCount }}
+                </p>
+              </div>
             </template>
           </div>
         </div>
