@@ -20,7 +20,7 @@ const breadcrumbs = computed(() => {
   
   const segments = path.split('/').filter(Boolean)
   const last = segments[segments.length - 1]
-  const info = routeMap[last]
+  const info = last ? routeMap[last] : undefined
   
   if (info) return [info.category, info.name]
   
@@ -81,7 +81,7 @@ const breadcrumbs = computed(() => {
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 p-4 lg:p-8 w-full max-w-[1920px] mx-auto overflow-x-hidden bg-white">
+        <main class="flex-1 p-4 lg:p-8 w-full mx-auto overflow-x-hidden bg-white">
           <slot />
         </main>
       </div>
