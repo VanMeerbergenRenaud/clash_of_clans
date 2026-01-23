@@ -10,6 +10,7 @@ export interface LeaderboardEntry {
     playerTag: string
     playerName: string
     perfectCount: number      // Number of 3-star attacks (estimated from 6★ wars or counted from daily_attacks)
+    twoStarCount: number      // Number of 2-star attacks
     oneStarCount: number      // Number of attacks with ≤1 star (0-star + 1-star combined)
     zeroStarCount: number     // Number of 0-star attacks only
     totalStars: number
@@ -45,7 +46,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
     const clans = ref<{ tag: string; name: string }[]>([])
 
     const filters = ref<LeaderboardFilters>({
-        range: 'last1',
+        range: 'last5',
         clanTag: 'all'
     })
 
@@ -132,6 +133,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
             playerTag: string
             playerName: string
             perfectCount: number        // Estimated number of 3-star attacks
+            twoStarCount: number        // Estimated number of 2-star attacks
             zeroStarCount: number       // Estimated number of 0-star attacks
             oneStarCount: number        // Estimated number of ≤1 star attacks (0-star + 1-star)
             totalStars: number
@@ -146,6 +148,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 playerTag: p.player_tag,
                 playerName: p.player_name,
                 perfectCount: 0,
+                twoStarCount: 0,
                 zeroStarCount: 0,
                 oneStarCount: 0,
                 totalStars: 0,
@@ -168,9 +171,14 @@ export function useLeaderboardStats(type: LeaderboardType) {
             // PRECISE CALCULATION (if detailed attacks data exists)
             if (attacks.length > 0) {
                 for (const atk of attacks) {
-                    // Perfect counts
+                    // Perfect counts (3 stars)
                     if (atk.stars === 3) {
                         existing.perfectCount += 1
+                    }
+
+                    // 2-star attacks
+                    if (atk.stars === 2) {
+                        existing.twoStarCount += 1
                     }
 
                     // Poor attacks (≤1 star)
@@ -191,8 +199,12 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 if (attacksCount === 2) {
                     if (stars === 6) {
                         existing.perfectCount += 2  // 3★ + 3★
-                    } else if (stars >= 4 && stars <= 5) {
-                        existing.perfectCount += 1  // At least one 3★ attack
+                    } else if (stars === 5) {
+                        existing.perfectCount += 1  // 3★ + 2★
+                        existing.twoStarCount += 1
+                    } else if (stars === 4) {
+                        // Could be 3★ + 1★ or 2★ + 2★ - assume 2★ + 2★
+                        existing.twoStarCount += 2
                     }
                 } else if (attacksCount === 1 && stars === 3) {
                     existing.perfectCount += 1
@@ -276,6 +288,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
             playerTag: string
             playerName: string
             perfectCount: number
+            twoStarCount: number     // 2-star attacks
             zeroStarCount: number    // 0-star attacks
             oneStarCount: number     // 0-star + 1-star combined
             totalStars: number
@@ -290,6 +303,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 playerTag: p.player_tag,
                 playerName: p.player_name,
                 perfectCount: 0,
+                twoStarCount: 0,
                 zeroStarCount: 0,
                 oneStarCount: 0,
                 totalStars: 0,
@@ -307,6 +321,7 @@ export function useLeaderboardStats(type: LeaderboardType) {
             const dailyAttacks = p.daily_attacks || []
             for (const attack of dailyAttacks) {
                 if (attack.stars === 3) existing.perfectCount += 1
+                if (attack.stars === 2) existing.twoStarCount += 1
                 if (attack.stars === 0) {
                     existing.zeroStarCount += 1
                     existing.oneStarCount += 1
@@ -330,12 +345,13 @@ export function useLeaderboardStats(type: LeaderboardType) {
         return rawData.value
             .filter(p => p.totalAttacks > 0)
             .sort((a, b) => b.perfectCount - a.perfectCount || b.totalStars - a.totalStars)
-            .slice(0, 10)
+            .slice(0, 30)
             .map((p, idx) => ({
                 rank: idx + 1,
                 playerTag: p.playerTag,
                 playerName: p.playerName,
                 perfectCount: p.perfectCount,
+                twoStarCount: p.twoStarCount || 0,
                 oneStarCount: p.oneStarCount,
                 zeroStarCount: p.zeroStarCount || 0,
                 totalStars: p.totalStars,
@@ -362,12 +378,13 @@ export function useLeaderboardStats(type: LeaderboardType) {
                 // Finally: sort by total attacks descending (more attacks = more visible)
                 return b.totalAttacks - a.totalAttacks
             })
-            .slice(0, 10)
+            .slice(0, 30)
             .map((p, idx) => ({
                 rank: idx + 1,
                 playerTag: p.playerTag,
                 playerName: p.playerName,
                 perfectCount: p.perfectCount,
+                twoStarCount: p.twoStarCount || 0,
                 oneStarCount: p.oneStarCount,
                 zeroStarCount: p.zeroStarCount || 0,
                 totalStars: p.totalStars,
