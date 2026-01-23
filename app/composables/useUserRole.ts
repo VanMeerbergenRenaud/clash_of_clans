@@ -35,7 +35,6 @@ export const useUserRole = () => {
         }
 
         if (!user.value.id) {
-            console.log('DEBUG: User ID missing, skipping fetch')
             return
         }
 
@@ -46,7 +45,7 @@ export const useUserRole = () => {
                 .from('users')
                 .select('id, email, username, user_type')
                 .eq('id', user.value.id)
-                .single()
+                .single() as { data: any, error: any }
 
             if (error) {
                 console.error('Error fetching user profile:', error)
@@ -83,7 +82,7 @@ export const useUserRole = () => {
 
     // Watch for user changes and fetch profile
     watch(user, async (newUser) => {
-        if (newUser) {
+        if (newUser && newUser.id) {
             await fetchUserProfile()
         } else {
             userRole.value = null
