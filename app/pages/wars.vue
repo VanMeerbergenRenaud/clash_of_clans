@@ -106,21 +106,28 @@ const historyMembers = computed<WarParticipant[]>(() => {
          Let's fill dummy attacks for count.
       */
      
+     // Distribute stored stars and destruction across attacks
      const attacks: WarAttack[] = []
-     for (let i = 0; i < (p.attacks_count || 0); i++) {
-         attacks.push({
-             attackerTag: '',
-             defenderTag: '',
-             stars: 0, // Unknown individual stars. 
-             // Logic to distribute stars? 
-             // IF stars=6, count=2 -> [3,3]
-             // IF stars=3, count=1 -> [3]
-             // Else we might just show grey or generic.
-             // For now, let's leave stars 0 so they show red? Or better, we can't show the dots accurately.
-             // We'll trust the explicit `stars` column in the table component.
-             destructionPercentage: 0,
-             order: i
-         })
+     const attacksCount = p.attacks_count || 0
+     const totalStars = p.stars || 0
+     const totalDestruction = p.destruction || 0
+     
+     if (attacksCount > 0) {
+         // Smart distribution: if 6 stars with 2 attacks = 3+3, if 3 stars with 1 attack = 3, etc.
+         // For 2 attacks, divide evenly when possible, otherwise put remainder in first attack
+         const avgStarsPerAttack = Math.floor(totalStars / attacksCount)
+         const remainderStars = totalStars % attacksCount
+         const avgDestructionPerAttack = totalDestruction / attacksCount
+         
+         for (let i = 0; i < attacksCount; i++) {
+             attacks.push({
+                 attackerTag: '',
+                 defenderTag: '',
+                 stars: avgStarsPerAttack + (i < remainderStars ? 1 : 0),
+                 destructionPercentage: avgDestructionPerAttack,
+                 order: i
+             })
+         }
      }
 
      // IF we successfully added the defense columns
@@ -256,7 +263,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-8 pb-32">
+  <div class="space-y-8 max-sm:pb-8">
     
     <!-- HEADER: Title, Clan Selector & View Switcher -->
     <div class="flex flex-col gap-5">
@@ -269,7 +276,7 @@ onMounted(() => {
              Guerres
           </h1>
 
-          <div class="flex items-center gap-3">
+          <div class="flex flex-wrap items-center gap-3">
             <!-- Clan Selector Dropdown -->
             <div class="relative">
               <select 
@@ -421,7 +428,7 @@ onMounted(() => {
 
                         <!-- VS / Score Center -->
                         <div class="shrink-0 flex flex-col items-center gap-4 px-4 py-2">
-                            <div class="flex items-center gap-8 md:gap-10">
+                            <div class="flex items-center gap-8 md:gap-4 lg:gap-10">
                                 <div class="text-center">
                                    <span class="block text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-none">{{ currentWar.clan.stars }}</span>
                                    <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1 block">Étoiles</span>
@@ -521,7 +528,7 @@ onMounted(() => {
       <div v-if="viewMode === 'results'" key="results" class="space-y-6">
         
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between">
           <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Trophy class="w-5 h-5 text-amber-500" />
             Historique des guerres
@@ -661,7 +668,7 @@ onMounted(() => {
               <div class="bg-white border-b border-slate-100">
                 <!-- Top bar with result, date and close button -->
                 <div class="px-6 py-3 bg-slate-50 flex items-center justify-between">
-                  <div class="flex items-center gap-3">
+                  <div class="flex flex-wrap items-center gap-3">
                     <span class="text-xs font-bold uppercase tracking-wider" 
                           :class="selectedWarHistory?.result === 'win' ? 'text-green-600' : selectedWarHistory?.result === 'lose' ? 'text-red-600' : 'text-slate-500'">
                       {{ selectedWarHistory?.result === 'win' ? 'Victoire' : selectedWarHistory?.result === 'lose' ? 'Défaite' : 'Nul' }}
@@ -673,7 +680,7 @@ onMounted(() => {
                     </div>
                     <div class="flex items-center gap-1.5 text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-500">
                       <Users class="w-3 h-3" />
-                      <span class="font-bold">{{ selectedWarHistory?.team_size }}v{{ selectedWarHistory?.team_size }}</span>
+                      <span class="font-bold">{{ selectedWarHistory?.team_size }} vs {{ selectedWarHistory?.team_size }}</span>
                     </div>
                   </div>
                   <button @click="closeWarModal" class="p-2 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">

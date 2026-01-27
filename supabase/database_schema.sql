@@ -21,6 +21,24 @@ CREATE TABLE public.cron_logs (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT cron_logs_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.inscription_members (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  inscription_id uuid NOT NULL,
+  player_tag text NOT NULL,
+  player_name text,
+  clan_tag text,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT inscription_members_pkey PRIMARY KEY (id),
+  CONSTRAINT inscription_members_inscription_id_fkey FOREIGN KEY (inscription_id) REFERENCES public.inscriptions(id),
+  CONSTRAINT inscription_members_clan_tag_fkey FOREIGN KEY (clan_tag) REFERENCES public.tracked_clans(tag),
+  CONSTRAINT inscription_members_player_tag_fkey FOREIGN KEY (player_tag) REFERENCES public.players(tag)
+);
+CREATE TABLE public.inscriptions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT inscriptions_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.league_clans (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   league_history_id uuid NOT NULL,
@@ -82,13 +100,11 @@ CREATE TABLE public.planning_members (
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   CONSTRAINT planning_members_pkey PRIMARY KEY (tag)
 );
-CREATE TABLE public.profiles (
-  id uuid NOT NULL,
-  username text UNIQUE,
-  user_type text DEFAULT 'viewer'::text CHECK (user_type = ANY (ARRAY['admin'::text, 'viewer'::text])),
-  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT profiles_pkey PRIMARY KEY (id),
-  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+CREATE TABLE public.players (
+  tag text NOT NULL,
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT players_pkey PRIMARY KEY (tag)
 );
 CREATE TABLE public.strategies (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -109,6 +125,15 @@ CREATE TABLE public.tracked_clans (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   badge_url text,
   CONSTRAINT tracked_clans_pkey PRIMARY KEY (ordered)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL,
+  username text UNIQUE,
+  user_type text DEFAULT 'viewer'::text CHECK (user_type = ANY (ARRAY['super_admin'::text, 'admin'::text, 'editor'::text, 'viewer'::text])),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.war_history (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -144,6 +169,7 @@ CREATE TABLE public.war_participants (
   defense_stars integer,
   defense_destruction double precision,
   defense_attacker_tag text,
+  attacks jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT war_participants_pkey PRIMARY KEY (id),
   CONSTRAINT war_participants_war_id_fkey FOREIGN KEY (war_id) REFERENCES public.war_history(id)
 );

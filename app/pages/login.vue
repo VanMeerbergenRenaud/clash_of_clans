@@ -41,8 +41,8 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4 bg-[url('https://wallpaperaccess.com/full/379058.jpg')] bg-cover bg-center">
-    <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"></div>
+  <div class="min-h-screen flex items-center justify-center p-4 bg-[url('/img/wallpapers/coc.jpeg')] bg-cover bg-center">
+    <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-xs"></div>
     
     <div class="relative w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-2xl">
       <div class="text-center mb-8">

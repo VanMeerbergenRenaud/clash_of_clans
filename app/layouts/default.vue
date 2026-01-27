@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { PanelLeft } from 'lucide-vue-next'
+import { PanelLeft, LogIn } from 'lucide-vue-next'
 
 const { isExpanded, toggleSidebar, toggleMobileSidebar } = useSidebar()
+const { isAuthenticated } = useUserRole()
 const route = useRoute()
 
 // Simple breadcrumb logic based on route path
@@ -10,6 +11,7 @@ const breadcrumbs = computed(() => {
   if (path === '/') return ['Tableau de bord']
   
   const routeMap: Record<string, { category: string, name: string }> = {
+    'inscription': { category: 'Organisation', name: 'Inscriptions' },
     'leagues': { category: 'Organisation', name: 'Ligues de clan' },
     'wars': { category: 'Organisation', name: 'Guerres de clan' },
     'bases': { category: 'Communauté', name: 'Bases de défense' },
@@ -18,7 +20,7 @@ const breadcrumbs = computed(() => {
   
   const segments = path.split('/').filter(Boolean)
   const last = segments[segments.length - 1]
-  const info = routeMap[last]
+  const info = last ? routeMap[last] : undefined
   
   if (info) return [info.category, info.name]
   
@@ -63,10 +65,23 @@ const breadcrumbs = computed(() => {
                 <span v-if="index < breadcrumbs.length - 1" class="text-slate-400">/</span>
              </template>
           </nav>
+
+          <!-- Spacer -->
+          <div class="flex-1"></div>
+
+          <!-- Login Button (when not authenticated) -->
+          <NuxtLink 
+            v-if="!isAuthenticated"
+            to="/login"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
+          >
+            <LogIn class="w-4 h-4" />
+            Se connecter
+          </NuxtLink>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 p-4 lg:p-8 w-full max-w-[1920px] mx-auto overflow-x-hidden bg-white">
+        <main class="flex-1 p-4 lg:p-8 w-full mx-auto overflow-x-hidden bg-white">
           <slot />
         </main>
       </div>

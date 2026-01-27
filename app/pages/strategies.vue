@@ -181,7 +181,7 @@ const filteredStrats = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-8 pb-32">
+  <div class="space-y-8 max-sm:pb-8">
     <!-- HEADER & FILTERS -->
     <div class="flex flex-col gap-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -194,7 +194,7 @@ const filteredStrats = computed(() => {
           </h1>
         </div>
 
-        <div v-if="isMounted" class="flex items-center gap-3">
+        <div v-if="isMounted" class="flex flex-wrap items-center gap-3">
           <div class="relative">
             <select 
               v-model="selectedTH" 
