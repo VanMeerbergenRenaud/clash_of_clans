@@ -1,7 +1,7 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-    const client = serverSupabaseServiceRole(event)
+    const client: any = serverSupabaseServiceRole(event)
 
     // Tag cible demandé par l'utilisateur
     const targetTag = '#22GU8YG8U'

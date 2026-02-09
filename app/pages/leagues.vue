@@ -152,7 +152,7 @@ const calculateLiveGroupStats = async () => {
     }
 
     const allWarTags = (leagueGroup.value.rounds || []).flatMap((r: any) => r.warTags || [])
-    const warResults = await Promise.all(allWarTags.map(tag => fetchWarStats(tag)))
+    const warResults = await Promise.all(allWarTags.map((tag: string) => fetchWarStats(tag)))
 
     warResults.forEach(res => {
       if (res) {

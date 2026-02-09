@@ -5,7 +5,8 @@ export default defineEventHandler(async (event) => {
     // Only writes to DB when wars are ending, so abuse risk is minimal.
 
     // Use Service Role to bypass RLS for administrative/cron tasks
-    const client = serverSupabaseServiceRole(event)
+    // Note: Using 'any' cast because Nuxt Supabase module doesn't properly infer Database types
+    const client: any = serverSupabaseServiceRole(event)
     const config = useRuntimeConfig()
     const cocToken = config.cocApiToken
 

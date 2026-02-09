@@ -2,7 +2,8 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
     // Use Service Role to bypass RLS for administrative/cron tasks
-    const client = serverSupabaseServiceRole(event)
+    // Note: Using 'any' cast because Nuxt Supabase module doesn't properly infer Database types
+    const client: any = serverSupabaseServiceRole(event)
     const config = useRuntimeConfig()
     const cocToken = config.cocApiToken
 
@@ -142,10 +143,10 @@ export default defineEventHandler(async (event) => {
             }
 
             const allWarTags = (leagueGroup.rounds || []).flatMap((r: any) => r.warTags || [])
-            const warsToFetch = allWarTags.filter(tag => tag !== '#0')
+            const warsToFetch = allWarTags.filter((tag: string) => tag !== '#0')
 
             // Fetch wars in parallel (limit parallelism if needed, but 28 requests should be fine for CoC API)
-            const warResults = await Promise.all(warsToFetch.map(async (warTag) => {
+            const warResults = await Promise.all(warsToFetch.map(async (warTag: string) => {
                 try {
                     const encodedWarTag = encodeURIComponent(warTag)
                     const warData: any = await $fetch(`${baseUrl}/clanwarleagues/wars/${encodedWarTag}`, {
@@ -304,6 +305,8 @@ export default defineEventHandler(async (event) => {
                 // Update each clan with stats and rank
                 for (let i = 0; i < sortedGroupClans.length; i++) {
                     const clanStats = sortedGroupClans[i]
+                    if (!clanStats) continue
+
                     const { error: updateError } = await client
                         .from('league_clans')
                         .update({

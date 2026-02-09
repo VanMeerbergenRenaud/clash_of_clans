@@ -1,7 +1,7 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-    const client = serverSupabaseServiceRole(event)
+    const client: any = serverSupabaseServiceRole(event)
 
     // Target clan tag (must be in tracked_clans)
     const targetTag = '#22GU8YG8U'
@@ -190,6 +190,8 @@ function generateDailyAttacks(count: number, profile: 'perfect' | 'good' | 'aver
         }
 
         const opponent = opponents[(day - 1) % opponents.length]
+        if (!opponent) continue
+
         attacks.push({
             day,
             stars,
