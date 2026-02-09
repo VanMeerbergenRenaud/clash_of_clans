@@ -141,127 +141,108 @@ export default defineEventHandler(async (event) => {
                 groupClanStatsMap.set(groupClan.tag.toUpperCase(), { stars: 0, destruction: 0 })
             }
 
-            for (const round of leagueGroup.rounds || []) {
-                for (const warTag of round.warTags || []) {
-                    if (warTag === '#0') continue // Skip placeholder wars
+            const allWarTags = (leagueGroup.rounds || []).flatMap((r: any) => r.warTags || [])
+            const warsToFetch = allWarTags.filter(tag => tag !== '#0')
 
-                    try {
-                        const encodedWarTag = encodeURIComponent(warTag)
-                        const warData: any = await $fetch(`${baseUrl}/clanwarleagues/wars/${encodedWarTag}`, {
-                            headers: {
-                                Authorization: `Bearer ${cocToken}`,
-                                Accept: 'application/json'
-                            }
-                        })
-                        warsProcessed++
-
-                        // 6a. Calculate stats for both clans to determine winner
-                        const clan1 = warData.clan
-                        const clan2 = warData.opponent
-
-                        if (clan1 && clan2) {
-                            const clan1Tag = clan1.tag.toUpperCase()
-                            const clan2Tag = clan2.tag.toUpperCase()
-
-                            // Calculate stars/destruction for clan1
-                            let stars1 = 0
-                            let dest1 = 0
-                            if (clan1.members) {
-                                for (const m of clan1.members) {
-                                    if (m.attacks) {
-                                        for (const a of m.attacks) {
-                                            stars1 += a.stars || 0
-                                            dest1 += a.destructionPercentage || 0
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Calculate stars/destruction for clan2
-                            let stars2 = 0
-                            let dest2 = 0
-                            if (clan2.members) {
-                                for (const m of clan2.members) {
-                                    if (m.attacks) {
-                                        for (const a of m.attacks) {
-                                            stars2 += a.stars || 0
-                                            dest2 += a.destructionPercentage || 0
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Win condition: more stars, or equal stars and more destruction
-                            const clan1Wins = stars1 > stars2 || (stars1 === stars2 && dest1 > dest2)
-                            const clan2Wins = stars2 > stars1 || (stars2 === stars1 && dest2 > dest1)
-
-                            const bonusStars1 = clan1Wins ? 10 : 0
-                            const bonusStars2 = clan2Wins ? 10 : 0
-
-                            // Update group stats for clan1
-                            const stats1 = groupClanStatsMap.get(clan1Tag)
-                            if (stats1) {
-                                groupClanStatsMap.set(clan1Tag, {
-                                    stars: stats1.stars + stars1 + bonusStars1,
-                                    destruction: stats1.destruction + dest1
-                                })
-                            } else {
-                                const msg = `Clan ${clan1Tag} not found in map (War: ${warTag})`
-                                console.warn(msg)
-                                if (!clanWarnings.includes(msg)) clanWarnings.push(msg)
-                            }
-
-                            // Update group stats for clan2
-                            const stats2 = groupClanStatsMap.get(clan2Tag)
-                            if (stats2) {
-                                groupClanStatsMap.set(clan2Tag, {
-                                    stars: stats2.stars + stars2 + bonusStars2,
-                                    destruction: stats2.destruction + dest2
-                                })
-                            } else {
-                                const msg = `Clan ${clan2Tag} not found in map (War: ${warTag})`
-                                console.warn(msg)
-                                if (!clanWarnings.includes(msg)) clanWarnings.push(msg)
-                            }
+            // Fetch wars in parallel (limit parallelism if needed, but 28 requests should be fine for CoC API)
+            const warResults = await Promise.all(warsToFetch.map(async (warTag) => {
+                try {
+                    const encodedWarTag = encodeURIComponent(warTag)
+                    const warData: any = await $fetch(`${baseUrl}/clanwarleagues/wars/${encodedWarTag}`, {
+                        headers: {
+                            Authorization: `Bearer ${cocToken}`,
+                            Accept: 'application/json'
                         }
+                    })
+                    return { warTag, warData }
+                } catch (err: any) {
+                    console.error(`Error fetching war ${warTag}:`, err)
+                    return { warTag, error: err.message }
+                }
+            }))
 
-                        // Find our clan in the war
-                        const ourClan = warData.clan?.tag?.toUpperCase() === clanTag ? warData.clan :
-                            warData.opponent?.tag?.toUpperCase() === clanTag ? warData.opponent : null
+            for (const res of warResults) {
+                if (res.error) {
+                    clanWarnings.push(`Error fetching war ${res.warTag}: ${res.error}`)
+                    continue
+                }
 
-                        const opponentClan = (ourClan === warData.clan) ? warData.opponent : warData.clan
+                const warData = res.warData
+                warsProcessed++
 
-                        if (!ourClan || !ourClan.members) continue
+                // 6a. Calculate stats for both clans to determine winner
+                const clan1 = warData.clan
+                const clan2 = warData.opponent
 
+                if (clan1 && clan2) {
+                    const clan1Tag = clan1.tag.toUpperCase()
+                    const clan2Tag = clan2.tag.toUpperCase()
 
-                        // Determine the day (round index)
-                        const roundIndex = leagueGroup.rounds.indexOf(round) + 1
-
-                        // Process opponent attacks to track defenses
-                        if (opponentClan && opponentClan.members) {
-                            for (const oppMember of opponentClan.members) {
-                                if (oppMember.attacks) {
-                                    for (const attack of oppMember.attacks) {
-                                        const defenderTag = attack.defenderTag
-                                        const currentBest = defenseMap.get(defenderTag)
-
-                                        // Track the BEST (highest stars/destruction) opponent attack against each of our players
-                                        if (!currentBest ||
-                                            attack.stars > currentBest.stars ||
-                                            (attack.stars === currentBest.stars && attack.destructionPercentage > currentBest.destruction)) {
-                                            defenseMap.set(defenderTag, {
-                                                stars: attack.stars,
-                                                destruction: attack.destructionPercentage,
-                                                attackerTag: oppMember.tag
-                                            })
-                                        }
+                    const calcWarStats = (clan: any) => {
+                        let stars = 0
+                        let dest = 0
+                        if (clan.members) {
+                            for (const m of clan.members) {
+                                if (m.attacks) {
+                                    for (const a of m.attacks) {
+                                        stars += a.stars || 0
+                                        dest += a.destructionPercentage || 0
                                     }
                                 }
                             }
                         }
+                        return { stars, dest }
+                    }
 
-                        // Process each member's attacks
-                        for (const member of ourClan.members) {
+                    const s1 = calcWarStats(clan1)
+                    const s2 = calcWarStats(clan2)
+
+                    // Win condition
+                    const clan1Wins = s1.stars > s2.stars || (s1.stars === s2.stars && s1.dest > s2.dest)
+                    const clan2Wins = s2.stars > s1.stars || (s2.stars === s1.stars && s2.dest > s1.dest)
+
+                    const bonus1 = clan1Wins ? 10 : 0
+                    const bonus2 = clan2Wins ? 10 : 0
+
+                    // Update group stats map
+                    const updateGroupStats = (tag: string, stars: number, dest: number) => {
+                        const existing = groupClanStatsMap.get(tag)
+                        if (existing) {
+                            groupClanStatsMap.set(tag, {
+                                stars: existing.stars + stars,
+                                destruction: existing.destruction + dest
+                            })
+                        } else {
+                            const msg = `Clan ${tag} not found in map (War: ${res.warTag})`
+                            if (!clanWarnings.includes(msg)) clanWarnings.push(msg)
+                        }
+                    }
+
+                    updateGroupStats(clan1Tag, s1.stars + bonus1, s1.dest)
+                    updateGroupStats(clan2Tag, s2.stars + bonus2, s2.dest)
+
+                    // Track defenses for our clan
+                    const ourClanObj = clan1Tag === clanTag ? clan1 : (clan2Tag === clanTag ? clan2 : null)
+                    const opponentClanObj = clan1Tag === clanTag ? clan2 : (clan2Tag === clanTag ? clan1 : null)
+
+                    if (ourClanObj && opponentClanObj && opponentClanObj.members) {
+                        for (const oppMember of opponentClanObj.members) {
+                            if (oppMember.attacks) {
+                                for (const attack of oppMember.attacks) {
+                                    const defenderTag = attack.defenderTag
+                                    const currentBest = defenseMap.get(defenderTag)
+                                    if (!currentBest || attack.stars > currentBest.stars || (attack.stars === currentBest.stars && attack.destructionPercentage > currentBest.destruction)) {
+                                        defenseMap.set(defenderTag, { stars: attack.stars, destruction: attack.destructionPercentage, attackerTag: oppMember.tag })
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Process members of our clan for participant stats
+                    if (ourClanObj && ourClanObj.members) {
+                        const roundIndex = leagueGroup.rounds.findIndex((r: any) => r.warTags?.includes(res.warTag)) + 1
+                        for (const member of ourClanObj.members) {
                             const existing = playerStatsMap.get(member.tag) || {
                                 player_tag: member.tag,
                                 player_name: member.name,
@@ -273,29 +254,18 @@ export default defineEventHandler(async (event) => {
                                 daily_attacks: []
                             }
 
-                            if (member.attacks && member.attacks.length > 0) {
+                            if (member.attacks) {
                                 for (const attack of member.attacks) {
                                     existing.total_stars += attack.stars || 0
                                     existing.total_destruction += attack.destructionPercentage || 0
                                     existing.attacks_used += 1
                                     totalClanStars += attack.stars || 0
                                     totalClanDestruction += attack.destructionPercentage || 0
-
-                                    existing.daily_attacks.push({
-                                        day: roundIndex,
-                                        stars: attack.stars,
-                                        destruction: attack.destructionPercentage,
-                                        opponent_tag: attack.defenderTag || null
-                                    })
+                                    existing.daily_attacks.push({ day: roundIndex, stars: attack.stars, destruction: attack.destructionPercentage, opponent_tag: attack.defenderTag || null })
                                 }
                             }
-
                             playerStatsMap.set(member.tag, existing)
                         }
-                    } catch (err: any) {
-                        // War might not be accessible yet
-                        console.error(`Error fetching war ${warTag}:`, err)
-                        clanWarnings.push(`Error fetching war ${warTag}: ${err.message}`)
                     }
                 }
             }

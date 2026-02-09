@@ -111,80 +111,66 @@ const calculateLiveGroupStats = async () => {
   try {
     const encodedTag = encodeURIComponent(selectedClanTag.value)
     
-    for (const round of leagueGroup.value.rounds || []) {
-      for (const warTag of round.warTags || []) {
-        if (warTag === '#0') continue // Skip placeholder wars
-        
-        try {
-          const encodedWarTag = encodeURIComponent(warTag)
-          const warData = await $fetch<any>(`/api/coc/clanwarleagues/wars/${encodedWarTag}`, { retry: 0 }).catch(() => null)
-          
-          if (!warData) continue
-          
-          // Process both clans in the war
-          const clan1 = warData.clan
-          const clan2 = warData.opponent
-          
-          if (clan1 && clan2) {
-            // Calculate stats for clan1
-            let stars1 = 0
-            let dest1 = 0
-            if (clan1.members) {
-              for (const m of clan1.members) {
-                if (m.attacks) {
-                  for (const a of m.attacks) {
-                    stars1 += a.stars || 0
-                    dest1 += a.destructionPercentage || 0
-                  }
+    const fetchWarStats = async (warTag: string) => {
+      if (warTag === '#0') return null
+      try {
+        const encodedWarTag = encodeURIComponent(warTag)
+        const warData = await $fetch<any>(`/api/coc/clanwarleagues/wars/${encodedWarTag}`, { retry: 0 }).catch(() => null)
+        if (!warData || !warData.clan || !warData.opponent) return null
+
+        // Calculate stats for both clans
+        const calcStats = (clan: any) => {
+          let stars = 0
+          let dest = 0
+          if (clan.members) {
+            for (const m of clan.members) {
+              if (m.attacks) {
+                for (const a of m.attacks) {
+                  stars += a.stars || 0
+                  dest += a.destructionPercentage || 0
                 }
               }
-            }
-            
-            // Calculate stats for clan2
-            let stars2 = 0
-            let dest2 = 0
-            if (clan2.members) {
-              for (const m of clan2.members) {
-                if (m.attacks) {
-                  for (const a of m.attacks) {
-                    stars2 += a.stars || 0
-                    dest2 += a.destructionPercentage || 0
-                  }
-                }
-              }
-            }
-            
-            // Determine winner (10 bonus stars)
-            // Win check: more stars, or same stars and more destruction
-            const clan1Wins = stars1 > stars2 || (stars1 === stars2 && dest1 > dest2)
-            const clan2Wins = stars2 > stars1 || (stars2 === stars1 && dest2 > dest1)
-            
-            const bonusStars1 = clan1Wins ? 10 : 0
-            const bonusStars2 = clan2Wins ? 10 : 0
-            
-            // Update stats map for clan1
-            const existing1 = statsMap.get(clan1.tag)
-            if (existing1) {
-              statsMap.set(clan1.tag, {
-                stars: existing1.stars + stars1 + bonusStars1,
-                destruction: existing1.destruction + dest1
-              })
-            }
-            
-            // Update stats map for clan2
-            const existing2 = statsMap.get(clan2.tag)
-            if (existing2) {
-              statsMap.set(clan2.tag, {
-                stars: existing2.stars + stars2 + bonusStars2,
-                destruction: existing2.destruction + dest2
-              })
             }
           }
-        } catch (e) {
-          // War might not be accessible
+          return { stars, dest }
         }
+
+        const stats1 = calcStats(warData.clan)
+        const stats2 = calcStats(warData.opponent)
+
+        // Determine winner bonus (10 stars)
+        const clan1Wins = stats1.stars > stats2.stars || (stats1.stars === stats2.stars && stats1.dest > stats2.dest)
+        const clan2Wins = stats2.stars > stats1.stars || (stats2.stars === stats1.stars && stats2.dest > stats1.dest)
+
+        return {
+          clan1: { tag: warData.clan.tag, stars: stats1.stars + (clan1Wins ? 10 : 0), destruction: stats1.dest },
+          clan2: { tag: warData.opponent.tag, stars: stats2.stars + (clan2Wins ? 10 : 0), destruction: stats2.dest }
+        }
+      } catch (e) {
+        return null
       }
     }
+
+    const allWarTags = (leagueGroup.value.rounds || []).flatMap((r: any) => r.warTags || [])
+    const warResults = await Promise.all(allWarTags.map(tag => fetchWarStats(tag)))
+
+    warResults.forEach(res => {
+      if (res) {
+        // Update clan 1
+        const existing1 = statsMap.get(res.clan1.tag) || { stars: 0, destruction: 0 }
+        statsMap.set(res.clan1.tag, {
+          stars: existing1.stars + res.clan1.stars,
+          destruction: existing1.destruction + res.clan1.destruction
+        })
+
+        // Update clan 2
+        const existing2 = statsMap.get(res.clan2.tag) || { stars: 0, destruction: 0 }
+        statsMap.set(res.clan2.tag, {
+          stars: existing2.stars + res.clan2.stars,
+          destruction: existing2.destruction + res.clan2.destruction
+        })
+      }
+    })
     
     liveGroupStats.value = statsMap
   } finally {
@@ -206,7 +192,7 @@ const fetchCurrentLeagueDbStats = async () => {
     .select('*')
     .eq('clan_tag', selectedClanTag.value)
     .eq('season', currentSeason)
-    .single()
+    .single() as any
   
   if (historyData) {
     currentLeagueDbStats.value = historyData
