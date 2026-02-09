@@ -90,6 +90,221 @@ const currentRoundStats = computed(() => {
   }
 })
 
+// Current league stats from the latest history record in DB
+const currentLeagueDbStats = ref<any>(null)
+const currentLeagueClans = ref<any[]>([])
+const liveGroupStats = ref<Map<string, { stars: number, destruction: number }>>(new Map())
+const loadingLiveStats = ref(false)
+
+// Calculate live stats from all war rounds
+const calculateLiveGroupStats = async () => {
+  if (!selectedClanTag.value || !leagueGroup.value?.rounds) return
+  
+  loadingLiveStats.value = true
+  const statsMap = new Map<string, { stars: number, destruction: number }>()
+  
+  // Initialize all clans with 0
+  for (const clan of leagueGroup.value.clans || []) {
+    statsMap.set(clan.tag, { stars: 0, destruction: 0 })
+  }
+  
+  try {
+    const encodedTag = encodeURIComponent(selectedClanTag.value)
+    
+    for (const round of leagueGroup.value.rounds || []) {
+      for (const warTag of round.warTags || []) {
+        if (warTag === '#0') continue // Skip placeholder wars
+        
+        try {
+          const encodedWarTag = encodeURIComponent(warTag)
+          const warData = await $fetch<any>(`/api/coc/clanwarleagues/wars/${encodedWarTag}`, { retry: 0 }).catch(() => null)
+          
+          if (!warData) continue
+          
+          // Process both clans in the war
+          const clan1 = warData.clan
+          const clan2 = warData.opponent
+          
+          if (clan1 && clan2) {
+            // Calculate stats for clan1
+            let stars1 = 0
+            let dest1 = 0
+            if (clan1.members) {
+              for (const m of clan1.members) {
+                if (m.attacks) {
+                  for (const a of m.attacks) {
+                    stars1 += a.stars || 0
+                    dest1 += a.destructionPercentage || 0
+                  }
+                }
+              }
+            }
+            
+            // Calculate stats for clan2
+            let stars2 = 0
+            let dest2 = 0
+            if (clan2.members) {
+              for (const m of clan2.members) {
+                if (m.attacks) {
+                  for (const a of m.attacks) {
+                    stars2 += a.stars || 0
+                    dest2 += a.destructionPercentage || 0
+                  }
+                }
+              }
+            }
+            
+            // Determine winner (10 bonus stars)
+            // Win check: more stars, or same stars and more destruction
+            const clan1Wins = stars1 > stars2 || (stars1 === stars2 && dest1 > dest2)
+            const clan2Wins = stars2 > stars1 || (stars2 === stars1 && dest2 > dest1)
+            
+            const bonusStars1 = clan1Wins ? 10 : 0
+            const bonusStars2 = clan2Wins ? 10 : 0
+            
+            // Update stats map for clan1
+            const existing1 = statsMap.get(clan1.tag)
+            if (existing1) {
+              statsMap.set(clan1.tag, {
+                stars: existing1.stars + stars1 + bonusStars1,
+                destruction: existing1.destruction + dest1
+              })
+            }
+            
+            // Update stats map for clan2
+            const existing2 = statsMap.get(clan2.tag)
+            if (existing2) {
+              statsMap.set(clan2.tag, {
+                stars: existing2.stars + stars2 + bonusStars2,
+                destruction: existing2.destruction + dest2
+              })
+            }
+          }
+        } catch (e) {
+          // War might not be accessible
+        }
+      }
+    }
+    
+    liveGroupStats.value = statsMap
+  } finally {
+    loadingLiveStats.value = false
+  }
+}
+
+// Fetch current league stats from DB when leagueGroup is available
+const fetchCurrentLeagueDbStats = async () => {
+  if (!selectedClanTag.value || !leagueGroup.value) return
+  
+  // Get the current season from leagueGroup
+  const currentSeason = leagueGroup.value.season
+  if (!currentSeason) return
+  
+  // Fetch the league history for this season
+  const { data: historyData } = await supabase
+    .from('league_history')
+    .select('*')
+    .eq('clan_tag', selectedClanTag.value)
+    .eq('season', currentSeason)
+    .single()
+  
+  if (historyData) {
+    currentLeagueDbStats.value = historyData
+    
+    // Fetch league_clans for this history
+    const { data: clansData } = await supabase
+      .from('league_clans')
+      .select('*')
+      .eq('league_history_id', historyData.id)
+      .order('group_rank', { ascending: true })
+    
+    currentLeagueClans.value = clansData || []
+    
+    // Check if we have valid stats in DB (stars > 0 for any clan)
+    const hasValidDbStats = (clansData || []).some((c: any) => c.total_stars > 0)
+    
+    if (!hasValidDbStats) {
+      // Calculate live stats if DB doesn't have data yet
+      await calculateLiveGroupStats()
+    }
+  } else {
+    // No DB data, calculate live
+    await calculateLiveGroupStats()
+  }
+}
+
+// Computed to get sorted clans with stats from DB or live calculation
+const rankedLeagueClans = computed(() => {
+  if (!leagueGroup.value?.clans) return []
+  
+  // Priority 1: DB data with valid stats
+  const hasValidDbStats = currentLeagueClans.value.some((c: any) => c.total_stars > 0)
+  
+  if (hasValidDbStats && currentLeagueClans.value.length > 0) {
+    return currentLeagueClans.value.map(dbClan => {
+      const apiClan = leagueGroup.value.clans.find((c: any) => c.tag === dbClan.clan_tag)
+      return {
+        ...apiClan,
+        ...dbClan,
+        tag: dbClan.clan_tag,
+        name: dbClan.clan_name,
+        badgeUrls: apiClan?.badgeUrls || { small: dbClan.badge_url }
+      }
+    })
+  }
+  
+  // Priority 2: Live calculated stats
+  if (liveGroupStats.value.size > 0) {
+    const clansWithStats = leagueGroup.value.clans.map((c: any) => {
+      const stats = liveGroupStats.value.get(c.tag) || { stars: 0, destruction: 0 }
+      return {
+        ...c,
+        total_stars: stats.stars,
+        total_destruction: stats.destruction
+      }
+    })
+    
+    // Sort by stars then destruction
+    const sorted = clansWithStats.sort((a: any, b: any) => {
+      if (b.total_stars !== a.total_stars) return b.total_stars - a.total_stars
+      return b.total_destruction - a.total_destruction
+    })
+    
+    // Assign ranks
+    return sorted.map((c: any, idx: number) => ({
+      ...c,
+      group_rank: idx + 1
+    }))
+  }
+  
+  // Fallback: return API clans with no stats yet
+  return leagueGroup.value.clans.map((c: any, idx: number) => ({
+    ...c,
+    group_rank: idx + 1,
+    total_stars: 0,
+    total_destruction: 0
+  }))
+})
+
+// Get our clan's position in the group
+const ourClanRank = computed(() => {
+  const ourClan = rankedLeagueClans.value.find((c: any) => c.tag === selectedClanTag.value)
+  return ourClan?.group_rank || '?'
+})
+
+// Get our clan's total destruction
+const ourClanDestruction = computed(() => {
+  const ourClan = rankedLeagueClans.value.find((c: any) => c.tag === selectedClanTag.value)
+  const destruction = ourClan?.total_destruction || 0
+  return destruction > 0 ? Math.round(destruction) : '--'
+})
+
+// Get our clan's total stars
+const ourClanStars = computed(() => {
+  const ourClan = rankedLeagueClans.value.find((c: any) => c.tag === selectedClanTag.value)
+  return ourClan?.total_stars || 0
+})
+
 // -- METHODS --
 const fetchTrackedClans = async () => {
   loading.value = true
@@ -146,8 +361,14 @@ const fetchLeagueData = async () => {
     if (groupRes && groupRes.state !== 'notInWar') {
       const warRes = await $fetch<any>(`/api/coc/clans/${encodedTag}/currentwar`, { retry: 0 }).catch(() => null)
       currentWar.value = warRes?.state !== 'notInWar' ? warRes : null
+      
+      // Fetch current league stats from DB for display
+      await fetchCurrentLeagueDbStats()
     } else {
       currentWar.value = null
+      currentLeagueDbStats.value = null
+      currentLeagueClans.value = []
+      liveGroupStats.value = new Map()
     }
 
   } catch (err) {
@@ -276,8 +497,9 @@ const leagueSessionStats = computed(() => {
     })
 
   // Limit to top 15 or only show ≤1 stars if too many
+  // Limit to top 15
   if (bestDefenses.length > 15) {
-    bestDefenses = bestDefenses.filter(p => (p.defense_stars || 0) <= 1)
+    bestDefenses = bestDefenses.slice(0, 15)
   }
 
   return { best: combined, missing, struggling, bestDefenses }
@@ -363,14 +585,18 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-8 md:gap-12">
+                <div class="grid grid-cols-3 gap-6 md:gap-10">
                    <div class="text-center">
                      <div class="text-indigo-300 text-[10px] font-bold uppercase tracking-widest mb-1">Position</div>
-                     <div class="text-4xl font-black">#?</div>
+                     <div class="text-3xl md:text-4xl font-black">#{{ ourClanRank }}</div>
+                   </div>
+                   <div class="text-center">
+                     <div class="text-indigo-300 text-[10px] font-bold uppercase tracking-widest mb-1">Étoiles</div>
+                     <div class="text-3xl md:text-4xl font-black">{{ ourClanStars }}</div>
                    </div>
                    <div class="text-center">
                      <div class="text-indigo-300 text-[10px] font-bold uppercase tracking-widest mb-1">Destruction</div>
-                     <div class="text-4xl font-black">--%</div>
+                     <div class="text-3xl md:text-4xl font-black">{{ ourClanDestruction }}%</div>
                    </div>
                 </div>
               </div>
@@ -395,8 +621,8 @@ onMounted(() => {
                      </tr>
                    </thead>
                    <tbody class="divide-y divide-slate-100">
-                      <tr v-for="(c, idx) in leagueGroup.clans" :key="c.tag" :class="c.tag === selectedClanTag ? 'bg-slate-50' : ''">
-                        <td class="px-6 py-4 font-bold text-slate-400">{{ Number(idx) + 1 }}</td>
+                      <tr v-for="c in rankedLeagueClans" :key="c.tag" :class="c.tag === selectedClanTag ? 'bg-slate-50' : ''">
+                        <td class="px-6 py-4 font-bold text-slate-400">{{ c.group_rank }}</td>
                         <td class="px-6 py-4 flex items-center gap-3">
                            <div class="w-8 h-8 shrink-0">
                              <img v-if="c.badgeUrls?.small" :src="c.badgeUrls.small" :alt="c.name" class="w-full h-full object-contain" />
@@ -410,8 +636,8 @@ onMounted(() => {
                            </div>
                            <span v-if="c.tag === selectedClanTag" class="text-[9px] bg-indigo-50 text-indigo-500 border border-indigo-100 px-1.5 py-0.5 rounded ml-1 font-bold uppercase tracking-tighter">Moi</span>
                         </td>
-                       <td class="px-6 py-4 text-center font-mono font-bold">--</td>
-                       <td class="px-6 py-4 text-right font-mono">--%</td>
+                       <td class="px-6 py-4 text-center font-mono font-bold">{{ c.total_stars || 0 }}</td>
+                       <td class="px-6 py-4 text-right font-mono">{{ c.total_destruction ? Math.round(c.total_destruction) : 0 }}%</td>
                      </tr>
                    </tbody>
                  </table>
@@ -419,8 +645,8 @@ onMounted(() => {
 
                <!-- Mobile List -->
                <div class="md:hidden divide-y divide-slate-100">
-                  <div v-for="(c, idx) in leagueGroup.clans" :key="c.tag" class="p-4 flex items-center gap-4" :class="c.tag === selectedClanTag ? 'bg-slate-50' : ''">
-                     <span class="text-sm font-bold text-slate-400 w-4">{{ Number(idx) + 1 }}</span>
+                  <div v-for="c in rankedLeagueClans" :key="c.tag" class="p-4 flex items-center gap-4" :class="c.tag === selectedClanTag ? 'bg-slate-50' : ''">
+                     <span class="text-sm font-bold text-slate-400 w-4">{{ c.group_rank }}</span>
                      
                      <div class="w-10 h-10 shrink-0 bg-white rounded-lg border border-slate-100 flex items-center justify-center overflow-hidden">
                         <img v-if="c.badgeUrls?.small" :src="c.badgeUrls.small" :alt="c.name" class="w-full h-full object-contain p-1" />
@@ -433,8 +659,8 @@ onMounted(() => {
                            <span v-if="c.tag === selectedClanTag" class="text-[9px] bg-indigo-50 text-indigo-500 border border-indigo-100 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Moi</span>
                         </div>
                         <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                           <span class="flex items-center gap-1 font-medium"><StarIcon class="w-3 h-3 text-slate-300" /> --</span>
-                           <span class="flex items-center gap-1 font-medium">--%</span>
+                           <span class="flex items-center gap-1 font-medium"><StarIcon class="w-3 h-3 text-amber-400" /> {{ c.total_stars || 0 }}</span>
+                           <span class="flex items-center gap-1 font-medium">{{ c.total_destruction ? Math.round(c.total_destruction) : 0 }}%</span>
                         </div>
                      </div>
                   </div>
@@ -752,7 +978,7 @@ onMounted(() => {
                             <StarIcon class="w-4 h-4 text-current" />
                             <span class="font-semibold text-sm">Top Performeurs</span>
                          </div>
-                         <span class="text-sm font-bold text-amber-600">{{ leagueSessionStats.best.filter(p => p.isPerfect).length }}</span>
+                         <span class="text-sm font-bold text-amber-600">{{ leagueSessionStats.best.length }}</span>
                       </div>
                       <div class="px-4 py-2 space-y-2 max-h-100 overflow-y-auto min-h-[250px]">
                          <div v-if="leagueSessionStats.best.length > 0">
@@ -852,7 +1078,7 @@ onMounted(() => {
                                       <span class="text-xs font-semibold text-orange-500 bg-orange-100 px-2 py-0.5 rounded">
                                          {{ atk.stars }}★
                                       </span>
-                                      <span class="text-xs font-medium text-slate-500">{{ atk.destructionPercentage }}%</span>
+                                      <span class="text-xs font-medium text-slate-500">{{ atk.destruction }}%</span>
                                    </template>
                                 </div>
                              </div>
